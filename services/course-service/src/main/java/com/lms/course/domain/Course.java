@@ -32,6 +32,9 @@ public class Course {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    @Column(name = "published_at")
+    private OffsetDateTime publishedAt;
+
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("position ASC")
     private List<CourseModule> modules = new ArrayList<>();
@@ -57,6 +60,8 @@ public class Course {
     public void setStatus(CourseStatus status) { this.status = status; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
+    public OffsetDateTime getPublishedAt() { return publishedAt; }
+    public void setPublishedAt(OffsetDateTime publishedAt) { this.publishedAt = publishedAt; }
     public List<CourseModule> getModules() { return modules; }
 
     public void addModule(CourseModule module) {

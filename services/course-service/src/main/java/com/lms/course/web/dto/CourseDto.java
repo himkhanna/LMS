@@ -14,6 +14,7 @@ public record CourseDto(
         CourseStatus status,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
+        OffsetDateTime publishedAt,
         List<ModuleDto> modules
 ) {
     public static CourseDto from(Course c) {
@@ -24,7 +25,21 @@ public record CourseDto(
                 c.getStatus(),
                 c.getCreatedAt(),
                 c.getUpdatedAt(),
+                c.getPublishedAt(),
                 c.getModules().stream().map(ModuleDto::from).toList()
+        );
+    }
+
+    public static CourseDto summary(Course c) {
+        return new CourseDto(
+                c.getId(),
+                c.getTitle(),
+                c.getDescription(),
+                c.getStatus(),
+                c.getCreatedAt(),
+                c.getUpdatedAt(),
+                c.getPublishedAt(),
+                java.util.List.of()
         );
     }
 }

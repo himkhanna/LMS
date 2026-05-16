@@ -16,9 +16,30 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  graphql:
+    graphiql:
+      enabled: true
+    schema:
+      printer:
+        enabled: true
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 110MB
 
 server:
   port: ${SERVER_PORT:8081}
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:dev-only-secret-change-me-please-32+chars-needed-for-hs256}
+  storage:
+    provider: ${STORAGE_PROVIDER:local}
+    local:
+      root: ${STORAGE_LOCAL_ROOT:./data/assets}
+    azure:
+      connection-string: ${AZURE_BLOB_CONN:}
+      container: ${AZURE_BLOB_CONTAINER:lms-assets}
 
 management:
   endpoints:

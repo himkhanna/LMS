@@ -4,6 +4,9 @@ import com.lms.course.domain.Course;
 import com.lms.course.domain.CourseModule;
 import com.lms.course.domain.CourseStatus;
 import com.lms.course.domain.Lesson;
+import com.lms.course.events.CourseArchivedEvent;
+import com.lms.course.events.CourseEventPublisher;
+import com.lms.course.events.CoursePublishedEvent;
 import com.lms.course.repository.CourseModuleRepository;
 import com.lms.course.repository.CourseRepository;
 import com.lms.course.web.dto.CreateCourseRequest;
@@ -15,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Service
@@ -23,10 +27,12 @@ public class CourseService {
 
     private final CourseRepository courses;
     private final CourseModuleRepository modules;
+    private final CourseEventPublisher events;
 
-    public CourseService(CourseRepository courses, CourseModuleRepository modules) {
+    public CourseService(CourseRepository courses, CourseModuleRepository modules, CourseEventPublisher events) {
         this.courses = courses;
         this.modules = modules;
+        this.events = events;
     }
 
     @Transactional(readOnly = true)
@@ -81,5 +87,44 @@ public class CourseService {
         m.addLesson(l);
         modules.flush();
         return l;
+    }
+
+    public Course publish(UUID id) {
+        Course c = get(id);
+        if (c.getStatus() == CourseStatus.PUBLISHED) {
+            return c;
+        }
+        if (c.getModules().isEmpty()) {
+            throw new InvalidTransitionException("Cannot publish a course with no modules");
+        }
+        boolean hasLesson = c.getModules().stream().anyMatch(m -> !m.getLessons().isEmpty());
+        if (!hasLesson) {
+            throw new InvalidTransitionException("Cannot publish a course with no lessons");
+        }
+        OffsetDateTime now = OffsetDateTime.now();
+        c.setStatus(CourseStatus.PUBLISHED);
+        c.setPublishedAt(now);
+        events.publish(new CoursePublishedEvent(c.getId(), now));
+        return c;
+    }
+
+    public Course unpublish(UUID id) {
+        Course c = get(id);
+        if (c.getStatus() != CourseStatus.PUBLISHED) {
+            throw new InvalidTransitionException("Only a published course can be unpublished");
+        }
+        c.setStatus(CourseStatus.DRAFT);
+        c.setPublishedAt(null);
+        return c;
+    }
+
+    public Course archive(UUID id) {
+        Course c = get(id);
+        if (c.getStatus() == CourseStatus.ARCHIVED) {
+            return c;
+        }
+        c.setStatus(CourseStatus.ARCHIVED);
+        events.publish(new CourseArchivedEvent(c.getId(), OffsetDateTime.now()));
+        return c;
     }
 }

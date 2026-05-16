@@ -24,7 +24,7 @@ public class CourseController {
 
     @GetMapping
     public Page<CourseDto> list(@RequestParam(required = false) CourseStatus status, Pageable pageable) {
-        return service.list(status, pageable).map(CourseDto::from);
+        return service.list(status, pageable).map(CourseDto::summary);
     }
 
     @GetMapping("/{id}")
@@ -65,5 +65,20 @@ public class CourseController {
         return ResponseEntity
                 .created(URI.create("/api/v1/courses/lessons/" + l.getId()))
                 .body(LessonDto.from(l));
+    }
+
+    @PostMapping("/{id}/publish")
+    public CourseDto publish(@PathVariable UUID id) {
+        return CourseDto.from(service.publish(id));
+    }
+
+    @PostMapping("/{id}/unpublish")
+    public CourseDto unpublish(@PathVariable UUID id) {
+        return CourseDto.from(service.unpublish(id));
+    }
+
+    @PostMapping("/{id}/archive")
+    public CourseDto archive(@PathVariable UUID id) {
+        return CourseDto.from(service.archive(id));
     }
 }

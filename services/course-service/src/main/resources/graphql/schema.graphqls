@@ -1,0 +1,68 @@
+scalar DateTime
+scalar UUID
+
+enum CourseStatus { DRAFT PUBLISHED ARCHIVED }
+
+type Course {
+    id: UUID!
+    title: String!
+    description: String
+    status: CourseStatus!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    publishedAt: DateTime
+    modules: [CourseModule!]!
+}
+
+type CourseModule {
+    id: UUID!
+    title: String!
+    position: Int!
+    lessons: [Lesson!]!
+}
+
+type Lesson {
+    id: UUID!
+    title: String!
+    content: String
+    position: Int!
+    durationSecs: Int
+}
+
+input CreateCourseInput {
+    title: String!
+    description: String
+}
+
+input UpdateCourseInput {
+    title: String
+    description: String
+    status: CourseStatus
+}
+
+input ModuleInput {
+    title: String!
+}
+
+input LessonInput {
+    title: String!
+    content: String
+    durationSecs: Int
+}
+
+type Query {
+    course(id: UUID!): Course
+    courses(status: CourseStatus, page: Int = 0, size: Int = 20): [Course!]!
+    searchCourses(q: String!, page: Int = 0, size: Int = 20): [Course!]!
+}
+
+type Mutation {
+    createCourse(input: CreateCourseInput!): Course!
+    updateCourse(id: UUID!, input: UpdateCourseInput!): Course!
+    deleteCourse(id: UUID!): Boolean!
+    publishCourse(id: UUID!): Course!
+    unpublishCourse(id: UUID!): Course!
+    archiveCourse(id: UUID!): Course!
+    addModule(courseId: UUID!, input: ModuleInput!): CourseModule!
+    addLesson(moduleId: UUID!, input: LessonInput!): Lesson!
+}

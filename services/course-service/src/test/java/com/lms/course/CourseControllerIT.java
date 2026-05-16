@@ -10,14 +10,13 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.hamcrest.Matchers.notNullValue;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -36,17 +35,17 @@ class CourseControllerIT {
     @Test
     void createCourseAndAddModuleAndLesson() throws Exception {
         var courseBody = json.writeValueAsString(new CreateCourseRequest("Intro to LMS", "first course"));
-        var courseId = mvc.perform(post("/api/v1/courses")
+        var courseResp = mvc.perform(post("/api/v1/courses").with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(courseBody))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id", notNullValue()))
                 .andReturn().getResponse().getContentAsString();
 
-        String id = json.readTree(courseId).get("id").asText();
+        String id = json.readTree(courseResp).get("id").asText();
 
         var moduleBody = json.writeValueAsString(new CreateModuleRequest("Module 1"));
-        var moduleResp = mvc.perform(post("/api/v1/courses/" + id + "/modules")
+        var moduleResp = mvc.perform(post("/api/v1/courses/" + id + "/modules").with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(moduleBody))
                 .andExpect(status().isCreated())
@@ -55,13 +54,18 @@ class CourseControllerIT {
         String moduleId = json.readTree(moduleResp).get("id").asText();
 
         var lessonBody = json.writeValueAsString(new CreateLessonRequest("Lesson 1", "hello", 60));
-        mvc.perform(post("/api/v1/courses/modules/" + moduleId + "/lessons")
+        mvc.perform(post("/api/v1/courses/modules/" + moduleId + "/lessons").with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(lessonBody))
                 .andExpect(status().isCreated());
 
-        mvc.perform(get("/api/v1/courses/" + id))
+        mvc.perform(get("/api/v1/courses/" + id).with(jwt()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.modules[0].lessons[0].title").value("Lesson 1"));
+
+        mvc.perform(post("/api/v1/courses/" + id + "/publish").with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PUBLISHED"))
+                .andExpect(jsonPath("$.publishedAt", notNullValue()));
     }
 }

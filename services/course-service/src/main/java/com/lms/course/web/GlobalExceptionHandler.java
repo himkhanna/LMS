@@ -1,6 +1,7 @@
 package com.lms.course.web;
 
 import com.lms.course.service.CourseNotFoundException;
+import com.lms.course.service.InvalidTransitionException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -15,6 +16,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CourseNotFoundException.class)
     public ProblemDetail notFound(CourseNotFoundException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidTransitionException.class)
+    public ProblemDetail invalidTransition(InvalidTransitionException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
