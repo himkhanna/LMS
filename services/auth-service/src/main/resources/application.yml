@@ -16,8 +16,11 @@ app:
     expiry-seconds: 28800
   cors: { allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000} }
   auth:
-    local-accounts:
-      enabled: ${AUTH_LOCAL_ACCOUNTS_ENABLED:false}
+    self-register:
+      enabled: ${AUTH_SELF_REGISTER_ENABLED:false}
+    bootstrap-admin:
+      email: ${BOOTSTRAP_ADMIN_EMAIL:}
+      password: ${BOOTSTRAP_ADMIN_PASSWORD:}
     microsoft:
       tenant-id: ${MS_TENANT_ID:common}
       client-id: ${MS_CLIENT_ID:}

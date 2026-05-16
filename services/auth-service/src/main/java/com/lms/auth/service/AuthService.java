@@ -3,9 +3,14 @@ package com.lms.auth.service;
 import com.lms.auth.domain.AppUser;
 import com.lms.auth.microsoft.MicrosoftOidcService.IdTokenClaims;
 import com.lms.auth.repository.AppUserRepository;
+import com.lms.auth.web.dto.CreateAdminRequest;
 import com.lms.auth.web.dto.LoginRequest;
 import com.lms.auth.web.dto.RegisterRequest;
+import com.lms.auth.web.dto.ResetPasswordRequest;
 import com.lms.auth.web.dto.TokenResponse;
+import com.lms.auth.web.dto.UpdateUserRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,6 +68,44 @@ public class AuthService {
         if (u.getRole() == null) u.setRole(AppUser.Role.USER);
         AppUser saved = users.save(u);
         return new TokenResponse(issuer.issue(saved), "Bearer", issuer.expirySeconds(), saved.getId());
+    }
+
+    // ---- Admin user management ----
+
+    @Transactional(readOnly = true)
+    public Page<AppUser> adminList(AppUser.Role role, AppUser.Status status, String q, Pageable pageable) {
+        return users.adminSearch(role, status, q == null || q.isBlank() ? null : "%" + q.toLowerCase() + "%", pageable);
+    }
+
+    public AppUser adminCreate(CreateAdminRequest req) {
+        if (users.existsByEmailIgnoreCase(req.email())) {
+            throw new ConflictException("Email already registered");
+        }
+        AppUser u = new AppUser();
+        u.setEmail(req.email().trim().toLowerCase());
+        u.setDisplayName(req.displayName());
+        u.setPasswordHash(encoder.encode(req.password()));
+        u.setRole(req.role() != null ? req.role() : AppUser.Role.ADMIN);
+        u.setStatus(AppUser.Status.ACTIVE);
+        return users.save(u);
+    }
+
+    public AppUser adminUpdate(UUID id, UpdateUserRequest req) {
+        AppUser u = get(id);
+        if (req.displayName() != null) u.setDisplayName(req.displayName());
+        if (req.role() != null) u.setRole(req.role());
+        if (req.status() != null) u.setStatus(req.status());
+        return u;
+    }
+
+    public void adminResetPassword(UUID id, ResetPasswordRequest req) {
+        AppUser u = get(id);
+        u.setPasswordHash(encoder.encode(req.newPassword()));
+    }
+
+    public void adminDelete(UUID id) {
+        if (!users.existsById(id)) throw new NotFoundException("User not found");
+        users.deleteById(id);
     }
 
     public static class NotFoundException extends RuntimeException { public NotFoundException(String m) { super(m); } }

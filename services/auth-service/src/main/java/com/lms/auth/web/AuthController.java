@@ -7,12 +7,12 @@ import com.lms.auth.web.dto.TokenResponse;
 import com.lms.auth.web.dto.UserDto;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
 
 import java.util.UUID;
 
@@ -20,25 +20,23 @@ import java.util.UUID;
 @RequestMapping("/api/v1/auth")
 public class AuthController {
 
-    private final boolean localAccountsEnabled;
-
     private final AuthService service;
+    private final boolean selfRegisterEnabled;
 
     public AuthController(AuthService service,
-                          @Value("${app.auth.local-accounts.enabled:false}") boolean localAccountsEnabled) {
+                          @Value("${app.auth.self-register.enabled:false}") boolean selfRegisterEnabled) {
         this.service = service;
-        this.localAccountsEnabled = localAccountsEnabled;
+        this.selfRegisterEnabled = selfRegisterEnabled;
     }
 
     @PostMapping("/register")
     public ResponseEntity<UserDto> register(@Valid @RequestBody RegisterRequest req) {
-        if (!localAccountsEnabled) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        if (!selfRegisterEnabled) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         return ResponseEntity.status(201).body(UserDto.from(service.register(req)));
     }
 
     @PostMapping("/login")
     public TokenResponse login(@Valid @RequestBody LoginRequest req) {
-        if (!localAccountsEnabled) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         return service.login(req);
     }
 
