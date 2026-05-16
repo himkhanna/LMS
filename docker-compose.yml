@@ -1,0 +1,114 @@
+name: lms-dev
+
+# All Postgres databases for the LMS stack. Run from the repo root:
+#   docker compose up -d
+# Each service points at its DB via env vars in application.yml — these
+# match the defaults, so just running this is enough.
+
+x-pg-health: &pg-health
+  test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+  interval: 5s
+  timeout: 5s
+  retries: 10
+
+services:
+  course-db:
+    image: postgres:16-alpine
+    container_name: lms-course-db
+    environment: { POSTGRES_DB: course, POSTGRES_USER: course, POSTGRES_PASSWORD: course }
+    ports: ["5432:5432"]
+    volumes: [course_pg:/var/lib/postgresql/data]
+    healthcheck: *pg-health
+
+  ai-gateway-db:
+    image: postgres:16-alpine
+    container_name: lms-ai-gateway-db
+    environment: { POSTGRES_DB: ai_gateway, POSTGRES_USER: ai, POSTGRES_PASSWORD: ai }
+    ports: ["5433:5432"]
+    volumes: [ai_gateway_pg:/var/lib/postgresql/data]
+    healthcheck: *pg-health
+
+  auth-db:
+    image: postgres:16-alpine
+    container_name: lms-auth-db
+    environment: { POSTGRES_DB: auth, POSTGRES_USER: auth, POSTGRES_PASSWORD: auth }
+    ports: ["5434:5432"]
+    volumes: [auth_pg:/var/lib/postgresql/data]
+    healthcheck: *pg-health
+
+  user-db:
+    image: postgres:16-alpine
+    container_name: lms-user-db
+    environment: { POSTGRES_DB: users, POSTGRES_USER: users, POSTGRES_PASSWORD: users }
+    ports: ["5435:5432"]
+    volumes: [user_pg:/var/lib/postgresql/data]
+    healthcheck: *pg-health
+
+  aiorch-db:
+    image: postgres:16-alpine
+    container_name: lms-aiorch-db
+    environment: { POSTGRES_DB: aiorch, POSTGRES_USER: aiorch, POSTGRES_PASSWORD: aiorch }
+    ports: ["5436:5432"]
+    volumes: [aiorch_pg:/var/lib/postgresql/data]
+    healthcheck: *pg-health
+
+  assessment-db:
+    image: postgres:16-alpine
+    container_name: lms-assessment-db
+    environment: { POSTGRES_DB: assessment, POSTGRES_USER: assessment, POSTGRES_PASSWORD: assessment }
+    ports: ["5437:5432"]
+    volumes: [assessment_pg:/var/lib/postgresql/data]
+    healthcheck: *pg-health
+
+  notification-db:
+    image: postgres:16-alpine
+    container_name: lms-notification-db
+    environment: { POSTGRES_DB: notification, POSTGRES_USER: notification, POSTGRES_PASSWORD: notification }
+    ports: ["5438:5432"]
+    volumes: [notification_pg:/var/lib/postgresql/data]
+    healthcheck: *pg-health
+
+  analytics-db:
+    image: postgres:16-alpine
+    container_name: lms-analytics-db
+    environment: { POSTGRES_DB: analytics, POSTGRES_USER: analytics, POSTGRES_PASSWORD: analytics }
+    ports: ["5439:5432"]
+    volumes: [analytics_pg:/var/lib/postgresql/data]
+    healthcheck: *pg-health
+
+  workflow-db:
+    image: postgres:16-alpine
+    container_name: lms-workflow-db
+    environment: { POSTGRES_DB: workflow, POSTGRES_USER: workflow, POSTGRES_PASSWORD: workflow }
+    ports: ["5440:5432"]
+    volumes: [workflow_pg:/var/lib/postgresql/data]
+    healthcheck: *pg-health
+
+  reporting-db:
+    image: postgres:16-alpine
+    container_name: lms-reporting-db
+    environment: { POSTGRES_DB: reporting, POSTGRES_USER: reporting, POSTGRES_PASSWORD: reporting }
+    ports: ["5441:5432"]
+    volumes: [reporting_pg:/var/lib/postgresql/data]
+    healthcheck: *pg-health
+
+  search-db:
+    image: postgres:16-alpine
+    container_name: lms-search-db
+    environment: { POSTGRES_DB: searchdb, POSTGRES_USER: searchdb, POSTGRES_PASSWORD: searchdb }
+    ports: ["5442:5432"]
+    volumes: [search_pg:/var/lib/postgresql/data]
+    healthcheck: *pg-health
+
+volumes:
+  course_pg: {}
+  ai_gateway_pg: {}
+  auth_pg: {}
+  user_pg: {}
+  aiorch_pg: {}
+  assessment_pg: {}
+  notification_pg: {}
+  analytics_pg: {}
+  workflow_pg: {}
+  reporting_pg: {}
+  search_pg: {}
