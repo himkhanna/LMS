@@ -1,0 +1,9 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ai-orchestration-service-postgres
+    environment: { POSTGRES_DB: aiorch, POSTGRES_USER: aiorch, POSTGRES_PASSWORD: aiorch }
+    ports: ["5436:5432"]
+    volumes: [aiorch_pg:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U aiorch -d aiorch"], interval: 5s, timeout: 5s, retries: 10 }
+volumes: { aiorch_pg: {} }

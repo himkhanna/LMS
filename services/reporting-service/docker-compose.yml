@@ -1,0 +1,9 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: reporting-service-postgres
+    environment: { POSTGRES_DB: reporting, POSTGRES_USER: reporting, POSTGRES_PASSWORD: reporting }
+    ports: ["5441:5432"]
+    volumes: [reporting_pg:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U reporting -d reporting"], interval: 5s, timeout: 5s, retries: 10 }
+volumes: { reporting_pg: {} }

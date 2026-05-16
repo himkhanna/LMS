@@ -1,0 +1,9 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: user-service-postgres
+    environment: { POSTGRES_DB: users, POSTGRES_USER: users, POSTGRES_PASSWORD: users }
+    ports: ["5435:5432"]
+    volumes: [user_pg:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U users -d users"], interval: 5s, timeout: 5s, retries: 10 }
+volumes: { user_pg: {} }

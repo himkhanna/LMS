@@ -1,0 +1,9 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: assessment-service-postgres
+    environment: { POSTGRES_DB: assessment, POSTGRES_USER: assessment, POSTGRES_PASSWORD: assessment }
+    ports: ["5437:5432"]
+    volumes: [assessment_pg:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U assessment -d assessment"], interval: 5s, timeout: 5s, retries: 10 }
+volumes: { assessment_pg: {} }

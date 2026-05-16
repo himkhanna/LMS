@@ -1,0 +1,9 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: search-service-postgres
+    environment: { POSTGRES_DB: searchdb, POSTGRES_USER: searchdb, POSTGRES_PASSWORD: searchdb }
+    ports: ["5442:5432"]
+    volumes: [search_pg:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U searchdb -d searchdb"], interval: 5s, timeout: 5s, retries: 10 }
+volumes: { search_pg: {} }
