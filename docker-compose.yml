@@ -1,9 +1,10 @@
-name: lms-dev
+name: lms
 
-# All Postgres databases for the LMS stack. Run from the repo root:
-#   docker compose up -d
-# Each service points at its DB via env vars in application.yml — these
-# match the defaults, so just running this is enough.
+# One command starts everything:  docker compose up
+#
+# Postgres for every service + the three core backends + the Next.js frontend.
+# Hot-reload is NOT available in this mode (everything is built once); use the
+# ./scripts/start-dev.sh + npm run dev flow if you want hot-reload during dev.
 
 x-pg-health: &pg-health
   test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
@@ -11,7 +12,11 @@ x-pg-health: &pg-health
   timeout: 5s
   retries: 10
 
+x-jwt-secret: &jwt-secret
+  JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me-please-32+chars-needed-for-hs256}
+
 services:
+  # ---- Databases ----
   course-db:
     image: postgres:16-alpine
     container_name: lms-course-db
@@ -36,79 +41,67 @@ services:
     volumes: [auth_pg:/var/lib/postgresql/data]
     healthcheck: *pg-health
 
-  user-db:
-    image: postgres:16-alpine
-    container_name: lms-user-db
-    environment: { POSTGRES_DB: users, POSTGRES_USER: users, POSTGRES_PASSWORD: users }
-    ports: ["5435:5432"]
-    volumes: [user_pg:/var/lib/postgresql/data]
-    healthcheck: *pg-health
+  # ---- Backend services ----
+  auth-service:
+    build: ./services/auth-service
+    container_name: lms-auth-service
+    depends_on:
+      auth-db: { condition: service_healthy }
+    environment:
+      <<: *jwt-secret
+      AUTH_DB_URL: jdbc:postgresql://auth-db:5432/auth
+      AUTH_DB_USER: auth
+      AUTH_DB_PASSWORD: auth
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-admin@idc.local}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-AdminPass!123}
+      MS_TENANT_ID: ${MS_TENANT_ID:-common}
+      MS_CLIENT_ID: ${MS_CLIENT_ID:-}
+      MS_CLIENT_SECRET: ${MS_CLIENT_SECRET:-}
+    ports: ["8083:8083"]
 
-  aiorch-db:
-    image: postgres:16-alpine
-    container_name: lms-aiorch-db
-    environment: { POSTGRES_DB: aiorch, POSTGRES_USER: aiorch, POSTGRES_PASSWORD: aiorch }
-    ports: ["5436:5432"]
-    volumes: [aiorch_pg:/var/lib/postgresql/data]
-    healthcheck: *pg-health
+  course-service:
+    build: ./services/course-service
+    container_name: lms-course-service
+    depends_on:
+      course-db: { condition: service_healthy }
+      ai-gateway-service: { condition: service_started }
+    environment:
+      <<: *jwt-secret
+      COURSE_DB_URL: jdbc:postgresql://course-db:5432/course
+      COURSE_DB_USER: course
+      COURSE_DB_PASSWORD: course
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      AI_GATEWAY_URL: http://ai-gateway-service:8082
+      STORAGE_LOCAL_ROOT: /var/lib/lms/assets
+    volumes: [course_assets:/var/lib/lms/assets]
+    ports: ["8081:8081"]
 
-  assessment-db:
-    image: postgres:16-alpine
-    container_name: lms-assessment-db
-    environment: { POSTGRES_DB: assessment, POSTGRES_USER: assessment, POSTGRES_PASSWORD: assessment }
-    ports: ["5437:5432"]
-    volumes: [assessment_pg:/var/lib/postgresql/data]
-    healthcheck: *pg-health
+  ai-gateway-service:
+    build: ./services/ai-gateway-service
+    container_name: lms-ai-gateway-service
+    depends_on:
+      ai-gateway-db: { condition: service_healthy }
+    environment:
+      <<: *jwt-secret
+      AI_DB_URL: jdbc:postgresql://ai-gateway-db:5432/ai_gateway
+      AI_DB_USER: ai
+      AI_DB_PASSWORD: ai
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+    ports: ["8082:8082"]
 
-  notification-db:
-    image: postgres:16-alpine
-    container_name: lms-notification-db
-    environment: { POSTGRES_DB: notification, POSTGRES_USER: notification, POSTGRES_PASSWORD: notification }
-    ports: ["5438:5432"]
-    volumes: [notification_pg:/var/lib/postgresql/data]
-    healthcheck: *pg-health
-
-  analytics-db:
-    image: postgres:16-alpine
-    container_name: lms-analytics-db
-    environment: { POSTGRES_DB: analytics, POSTGRES_USER: analytics, POSTGRES_PASSWORD: analytics }
-    ports: ["5439:5432"]
-    volumes: [analytics_pg:/var/lib/postgresql/data]
-    healthcheck: *pg-health
-
-  workflow-db:
-    image: postgres:16-alpine
-    container_name: lms-workflow-db
-    environment: { POSTGRES_DB: workflow, POSTGRES_USER: workflow, POSTGRES_PASSWORD: workflow }
-    ports: ["5440:5432"]
-    volumes: [workflow_pg:/var/lib/postgresql/data]
-    healthcheck: *pg-health
-
-  reporting-db:
-    image: postgres:16-alpine
-    container_name: lms-reporting-db
-    environment: { POSTGRES_DB: reporting, POSTGRES_USER: reporting, POSTGRES_PASSWORD: reporting }
-    ports: ["5441:5432"]
-    volumes: [reporting_pg:/var/lib/postgresql/data]
-    healthcheck: *pg-health
-
-  search-db:
-    image: postgres:16-alpine
-    container_name: lms-search-db
-    environment: { POSTGRES_DB: searchdb, POSTGRES_USER: searchdb, POSTGRES_PASSWORD: searchdb }
-    ports: ["5442:5432"]
-    volumes: [search_pg:/var/lib/postgresql/data]
-    healthcheck: *pg-health
+  # ---- Frontend ----
+  web:
+    build: ./apps/web
+    container_name: lms-web
+    depends_on:
+      - auth-service
+      - course-service
+      - ai-gateway-service
+    ports: ["3000:3000"]
 
 volumes:
   course_pg: {}
   ai_gateway_pg: {}
   auth_pg: {}
-  user_pg: {}
-  aiorch_pg: {}
-  assessment_pg: {}
-  notification_pg: {}
-  analytics_pg: {}
-  workflow_pg: {}
-  reporting_pg: {}
-  search_pg: {}
+  course_assets: {}

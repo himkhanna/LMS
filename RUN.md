@@ -1,84 +1,74 @@
 # Run LMS locally
 
-Minimum stack: `auth-service` + `course-service` + `ai-gateway-service` + Postgres for each + the Next.js frontend (`lms-web`, in a sibling directory).
-
-## Prerequisites
-
-- Docker (Desktop, OrbStack, etc.)
-- Java 21
-- Maven 3.9+
-- Node 22+
-
-## One-time
+## TL;DR
 
 ```bash
-# 1. Start all 11 Postgres databases (only the 3 used for the test are critical)
-docker compose up -d
-
-# 2. Build everything once (optional, speeds up first mvn spring-boot:run)
-mvn -f services/auth-service/pom.xml -q -DskipTests package
-mvn -f services/course-service/pom.xml -q -DskipTests package
-mvn -f services/ai-gateway-service/pom.xml -q -DskipTests package
+git pull
+docker compose up --build
 ```
 
-## Start the backends
+Wait ~2 minutes on first run while images build. Then open **http://localhost:3000**.
 
-```bash
-./scripts/start-dev.sh
-```
+Sign in:
+- **Admin** → http://localhost:3000/login/admin → `admin@idc.local` / `AdminPass!123`
+- **Microsoft** → http://localhost:3000/login → only works after you configure Entra (see below)
 
-This launches `auth-service` (8083), `course-service` (8081), `ai-gateway-service` (8082) in the background, with logs in `./logs/<service>.log`. The script sets a default `JWT_SECRET` (same for all three) and seeds an admin via `BOOTSTRAP_ADMIN_EMAIL=admin@idc.local` / `BOOTSTRAP_ADMIN_PASSWORD=AdminPass!123`. Override either env var before running if you want.
+Stop: `Ctrl-C` then `docker compose down`.
+Wipe data (clean slate): `docker compose down -v`.
 
-Wait ~30s for first startup, then check:
+## What started
 
-```bash
-curl -s http://localhost:8083/actuator/health   # auth     -> {"status":"UP"}
-curl -s http://localhost:8081/actuator/health   # course
-curl -s http://localhost:8082/actuator/health   # ai-gateway
-```
+| Container | Port | Notes |
+|---|---|---|
+| `web` | 3000 | Next.js frontend |
+| `auth-service` | 8083 | Issues JWTs; admin/user CRUD |
+| `course-service` | 8081 | Courses, modules, lessons, assets, AI generate |
+| `ai-gateway-service` | 8082 | AI provider abstraction (OpenAI / Anthropic / Azure / Ollama) |
+| 3 × Postgres | 5432, 5433, 5434 | One DB per service |
 
-## Frontend
+The other 9 scaffolded services (user, ai-orchestration, assessment, notification, analytics, workflow, reporting, search) aren't in this compose — they're independent and not needed for the test flow.
 
-Extract the latest `lms-web-*.tar.gz` next to this repo, then:
+## Validate (5 minutes)
 
-```bash
-cd lms-web
-cp .env.local.example .env.local           # defaults already point at 8081/8082/8083
-npm install
-npm run dev                                # http://localhost:3000
-```
-
-## Validate (5-minute walkthrough)
-
-1. **Sign in as admin** — `http://localhost:3000/login/admin` with `admin@idc.local` / `AdminPass!123`.
-2. **Users** — add an instructor, change their role, toggle status, reset password.
-3. **AI providers** — Add one. Easiest path: install [Ollama](https://ollama.com) and `ollama pull llama3.2`, then register provider type `OLLAMA`, model `llama3.2`, base URL `http://localhost:11434`, mark as default. Otherwise register `OPENAI` with your API key. Click **Test**; expect a green OK row.
-4. **Courses** — Create a course manually, add a module + lesson, **Publish**. Upload a file on the lesson detail page; the link should serve the file back from `course-service`.
-5. **AI generate** — `/courses/generate`, type a topic, submit, wait 30–60s. New course appears with modules/lessons populated. Check **Admin → AI usage log** for a `SUCCESS` row.
-6. **Search** — type a word in the course list search bar; results from Postgres full-text search.
-
-## Stop
-
-```bash
-./scripts/stop-dev.sh         # stops the three Spring Boot processes
-docker compose down            # stops the Postgres containers
-docker compose down -v         # ALSO wipes the DB volumes (clean slate)
-```
+1. **Admin sign-in** → `/login/admin` → `admin@idc.local` / `AdminPass!123`.
+2. **Users** → add a user, change role, toggle status, reset password.
+3. **AI providers** → Add one. Easiest is Ollama (no API key):
+   - Install [Ollama](https://ollama.com), then on **your host**: `ollama pull llama3.2`.
+   - In the UI: type `OLLAMA`, name `local`, model `llama3.2`, base URL `http://host.docker.internal:11434` (Mac/Windows) or your host's docker bridge IP (Linux). Default.
+   - Otherwise use type `OPENAI` with a real API key and model `gpt-4o-mini`.
+   - Click **Test**; expect a green OK row.
+4. **Courses** → create a course → add a module → add a lesson → **Publish**.
+5. **Generate with AI** → topic, wait 30–60s, redirected to a new course populated by the AI.
+6. **AI usage log** under Admin → a `SUCCESS` row appears.
 
 ## Microsoft sign-in (optional)
 
-Skip for the first run — admin password login covers the test path. To enable user sign-in via Microsoft:
+Skip for the first run — admin password login covers everything. To enable user sign-in via Microsoft, register an app in Entra ID (redirect URI `http://localhost:3000/auth/callback`), grab the client ID / tenant / secret, then start with:
 
-1. Entra ID → App registrations → New app, redirect URI `http://localhost:3000/auth/callback`. Note client id, tenant id; create a client secret.
-2. `.env.local` on the frontend: `NEXT_PUBLIC_MS_CLIENT_ID`, `NEXT_PUBLIC_MS_TENANT_ID`.
-3. Re-export auth-service env: `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_TENANT_ID`, then `./scripts/stop-dev.sh && ./scripts/start-dev.sh`.
+```bash
+MS_TENANT_ID=... MS_CLIENT_ID=... MS_CLIENT_SECRET=... docker compose up --build
+```
+
+The frontend bakes `NEXT_PUBLIC_MS_CLIENT_ID` into the JS bundle at build time. If you want it different from the default, set it in `apps/web/.env.local` before `docker compose up --build`.
+
+## Hot-reload dev mode (alternative)
+
+The compose flow rebuilds everything. For day-to-day work with hot-reload, use the scripts instead:
+
+```bash
+docker compose up -d course-db ai-gateway-db auth-db    # just the DBs
+./scripts/start-dev.sh                                   # mvn spring-boot:run in background
+cd apps/web && npm install && npm run dev                # Next.js dev server with HMR
+```
+
+Stop: `./scripts/stop-dev.sh && docker compose down`.
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
-| Flyway "schema not empty" | `docker compose down -v && docker compose up -d` to wipe DB volumes. |
-| 401 on every request | Make sure auth-service, course-service, and ai-gateway-service all started with the **same** `JWT_SECRET`. The script handles this automatically; you only hit this if you started a service manually with a different value. |
-| Frontend "Failed to fetch" | One of the backends isn't up. `tail -f logs/<service>.log` to see why. |
-| AI generate fails | `/admin/usage` shows the error per attempt. Usually a missing/wrong API key or Ollama not running. |
-| "address already in use" | Stop the previous run: `./scripts/stop-dev.sh`. |
+| Build takes forever the first time | Expected — Maven downloads dependencies inside the container. Subsequent builds reuse the image layer. |
+| Flyway "schema not empty" after a migration change | `docker compose down -v` to wipe DB volumes, then `docker compose up --build`. |
+| AI generate returns 502 | `docker logs lms-ai-gateway-service`. Usually invalid key or unreachable host. |
+| Browser shows "Failed to fetch" | One container hasn't booted. `docker compose ps` and `docker logs lms-<service>`. |
+| Ollama unreachable from a container | Use `http://host.docker.internal:11434` on Mac/Windows or your host's docker0 IP on Linux. `localhost` inside the container is the container itself. |
