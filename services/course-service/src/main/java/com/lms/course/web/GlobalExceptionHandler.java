@@ -1,5 +1,6 @@
 package com.lms.course.web;
 
+import com.lms.course.ai.AiGatewayException;
 import com.lms.course.service.CourseNotFoundException;
 import com.lms.course.service.InvalidTransitionException;
 import org.springframework.http.HttpStatus;
@@ -21,6 +22,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidTransitionException.class)
     public ProblemDetail invalidTransition(InvalidTransitionException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(AiGatewayException.class)
+    public ProblemDetail aiFailure(AiGatewayException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_GATEWAY, ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
