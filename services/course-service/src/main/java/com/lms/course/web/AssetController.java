@@ -3,6 +3,7 @@ package com.lms.course.web;
 import com.lms.course.service.AssetService;
 import com.lms.course.web.dto.AssetDto;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -13,6 +14,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1")
+@Transactional
 public class AssetController {
 
     private final AssetService assets;

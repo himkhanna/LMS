@@ -43,7 +43,7 @@ public class LocalObjectStorage implements ObjectStorage {
 
     @Override
     public String signedReadUrl(String key, Duration ttl) {
-        return "/api/v1/assets/" + key;
+        return "/api/v1/assets/files/" + key;
     }
 
     @Override

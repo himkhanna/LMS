@@ -6,6 +6,8 @@ import java.util.UUID;
 
 public record LessonDto(
         UUID id,
+        UUID moduleId,
+        UUID courseId,
         String title,
         String content,
         int position,
@@ -14,6 +16,8 @@ public record LessonDto(
     public static LessonDto from(Lesson l) {
         return new LessonDto(
                 l.getId(),
+                l.getModule().getId(),
+                l.getModule().getCourse().getId(),
                 l.getTitle(),
                 l.getContent(),
                 l.getPosition(),

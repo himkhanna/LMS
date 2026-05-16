@@ -25,6 +25,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/graphiql/**", "/graphql/schema").permitAll()
                         .requestMatchers("/dev/auth/**").permitAll()
+                        .requestMatchers("/api/v1/assets/files/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> {}));
