@@ -17,10 +17,14 @@ public class AppUser {
     private UUID id;
     @Column(nullable = false, unique = true)
     private String email;
-    @Column(name = "password_hash", nullable = false)
+    @Column(name = "password_hash")
     private String passwordHash;
     @Column(name = "display_name")
     private String displayName;
+    @Column(name = "microsoft_oid", length = 64, unique = true)
+    private String microsoftOid;
+    @Column(name = "tenant_id", length = 64)
+    private String tenantId;
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 32)
     private Role role = Role.USER;
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 32)
@@ -37,6 +41,8 @@ public class AppUser {
     public String getEmail() { return email; } public void setEmail(String v) { this.email = v; }
     public String getPasswordHash() { return passwordHash; } public void setPasswordHash(String v) { this.passwordHash = v; }
     public String getDisplayName() { return displayName; } public void setDisplayName(String v) { this.displayName = v; }
+    public String getMicrosoftOid() { return microsoftOid; } public void setMicrosoftOid(String v) { this.microsoftOid = v; }
+    public String getTenantId() { return tenantId; } public void setTenantId(String v) { this.tenantId = v; }
     public Role getRole() { return role; } public void setRole(Role v) { this.role = v; }
     public Status getStatus() { return status; } public void setStatus(Status v) { this.status = v; }
     public OffsetDateTime getCreatedAt() { return createdAt; }

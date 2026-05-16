@@ -1,6 +1,7 @@
 package com.lms.auth.service;
 
 import com.lms.auth.domain.AppUser;
+import com.lms.auth.microsoft.MicrosoftOidcService.IdTokenClaims;
 import com.lms.auth.repository.AppUserRepository;
 import com.lms.auth.web.dto.LoginRequest;
 import com.lms.auth.web.dto.RegisterRequest;
@@ -47,6 +48,21 @@ public class AuthService {
     @Transactional(readOnly = true)
     public AppUser get(UUID id) {
         return users.findById(id).orElseThrow(() -> new NotFoundException("User not found"));
+    }
+
+    public TokenResponse loginViaMicrosoft(IdTokenClaims claims) {
+        AppUser u = users.findByMicrosoftOid(claims.oid())
+                .or(() -> users.findByEmailIgnoreCase(claims.email()))
+                .orElseGet(AppUser::new);
+        boolean isNew = u.getId() == null;
+        u.setMicrosoftOid(claims.oid());
+        u.setTenantId(claims.tenantId());
+        u.setEmail(claims.email().toLowerCase());
+        if (isNew || u.getDisplayName() == null) u.setDisplayName(claims.displayName());
+        if (u.getStatus() == null) u.setStatus(AppUser.Status.ACTIVE);
+        if (u.getRole() == null) u.setRole(AppUser.Role.USER);
+        AppUser saved = users.save(u);
+        return new TokenResponse(issuer.issue(saved), "Bearer", issuer.expirySeconds(), saved.getId());
     }
 
     public static class NotFoundException extends RuntimeException { public NotFoundException(String m) { super(m); } }

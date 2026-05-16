@@ -1,5 +1,6 @@
 package com.lms.auth.web;
 
+import com.lms.auth.microsoft.MicrosoftAuthException;
 import com.lms.auth.service.AuthService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -21,6 +22,10 @@ public class GlobalExceptionHandler {
     }
     @ExceptionHandler(AuthService.UnauthorizedException.class)
     public ProblemDetail unauth(AuthService.UnauthorizedException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+    @ExceptionHandler(MicrosoftAuthException.class)
+    public ProblemDetail msAuth(MicrosoftAuthException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
     }
     @ExceptionHandler(MethodArgumentNotValidException.class)
