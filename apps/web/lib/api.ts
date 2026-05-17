@@ -896,3 +896,41 @@ export const Notifications = {
     api<void>(`/api/v1/admin/notifications/run-reminders`, { method: "POST" }),
 };
 
+// ---- Certificates ----
+
+export type AppCertificate = {
+  id: string;
+  enrollmentId: string;
+  courseId: string;
+  courseTitle: string;
+  userId: string;
+  userEmail: string;
+  userName: string | null;
+  issuedAt: string;
+  serial: string;
+};
+
+export const Certificates = {
+  mine: () => api<AppCertificate[]>(`/api/v1/me/certificates`),
+  get: (id: string) => api<AppCertificate>(`/api/v1/certificates/${id}`),
+  downloadPdf: async (id: string, serial: string) => {
+    const session = getSession();
+    const res = await fetch(`${API_BASE}/api/v1/certificates/${id}/pdf`, {
+      headers: session ? { Authorization: `Bearer ${session.token}` } : {},
+    });
+    if (!res.ok) {
+      throw new ApiError(res.status, `${res.status} ${res.statusText}`, await res.text());
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `certificate-${serial}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
+  viewUrl: (id: string) => `${API_BASE}/api/v1/certificates/${id}/pdf`,
+};
+

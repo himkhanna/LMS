@@ -1,5 +1,6 @@
 package com.lms.course.enrollment;
 
+import com.lms.course.certificate.CertificateService;
 import com.lms.course.domain.Course;
 import com.lms.course.quiz.AttemptRepository;
 import com.lms.course.quiz.QuizRepository;
@@ -7,6 +8,8 @@ import com.lms.course.quiz.QuizStatus;
 import com.lms.course.repository.CourseRepository;
 import com.lms.course.repository.LessonRepository;
 import com.lms.course.service.CourseNotFoundException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,19 +29,22 @@ public class EnrollmentService {
     private final LessonRepository lessons;
     private final QuizRepository quizzes;
     private final AttemptRepository attempts;
+    private final CertificateService certificates;
 
     public EnrollmentService(EnrollmentRepository enrollments,
                              LessonProgressRepository progress,
                              CourseRepository courses,
                              LessonRepository lessons,
                              QuizRepository quizzes,
-                             AttemptRepository attempts) {
+                             AttemptRepository attempts,
+                             @Lazy @Autowired CertificateService certificates) {
         this.enrollments = enrollments;
         this.progress = progress;
         this.courses = courses;
         this.lessons = lessons;
         this.quizzes = quizzes;
         this.attempts = attempts;
+        this.certificates = certificates;
     }
 
     public record AssignResult(int created, int skipped, List<Enrollment> enrollments) {}
@@ -189,6 +195,9 @@ public class EnrollmentService {
             if (pct >= 100) {
                 e.setStatus(EnrollmentStatus.COMPLETED);
                 if (e.getCompletedAt() == null) e.setCompletedAt(OffsetDateTime.now());
+                // Auto-issue a completion certificate. Idempotent on the
+                // unique enrollment_id constraint, so safe to re-call.
+                certificates.issueIfMissing(e);
             } else if (e.getStatus() == EnrollmentStatus.ASSIGNED) {
                 e.setStatus(EnrollmentStatus.IN_PROGRESS);
             }

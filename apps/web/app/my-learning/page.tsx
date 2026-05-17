@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Enrollments, type Enrollment, type EnrollmentStatus } from "@/lib/api";
+import {
+  Certificates,
+  Enrollments,
+  type AppCertificate,
+  type Enrollment,
+  type EnrollmentStatus,
+} from "@/lib/api";
 import { getSession } from "@/lib/auth";
 
 const FILTERS: { label: string; value: EnrollmentStatus | "ALL" }[] = [
@@ -17,6 +23,7 @@ export default function MyLearningPage() {
   const router = useRouter();
   const [filter, setFilter] = useState<EnrollmentStatus | "ALL">("ALL");
   const [items, setItems] = useState<Enrollment[] | null>(null);
+  const [certs, setCerts] = useState<Map<string, AppCertificate>>(new Map());
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -30,6 +37,19 @@ export default function MyLearningPage() {
       .then(setItems)
       .catch((e) => setErr(e instanceof Error ? e.message : "Failed to load"));
   }, [filter, router]);
+
+  useEffect(() => {
+    if (!getSession()) return;
+    Certificates.mine()
+      .then((list) => {
+        const m = new Map<string, AppCertificate>();
+        list.forEach((c) => m.set(c.enrollmentId, c));
+        setCerts(m);
+      })
+      .catch(() => {
+        // non-fatal
+      });
+  }, []);
 
   const overdueCount = items?.filter((e) => e.overdue).length ?? 0;
   const dueSoonCount =
@@ -84,7 +104,7 @@ export default function MyLearningPage() {
       ) : (
         <ul className="space-y-3">
           {items.map((e) => (
-            <EnrollmentCard key={e.id} e={e} />
+            <EnrollmentCard key={e.id} e={e} cert={certs.get(e.id)} />
           ))}
         </ul>
       )}
@@ -115,7 +135,7 @@ function StatTile({
   );
 }
 
-function EnrollmentCard({ e }: { e: Enrollment }) {
+function EnrollmentCard({ e, cert }: { e: Enrollment; cert?: AppCertificate }) {
   const statusChip =
     e.status === "COMPLETED"
       ? "chip chip-success"
@@ -167,6 +187,15 @@ function EnrollmentCard({ e }: { e: Enrollment }) {
           >
             {e.status === "COMPLETED" ? "Review" : e.progressPct > 0 ? "Continue" : "Start"}
           </Link>
+          {cert ? (
+            <button
+              type="button"
+              onClick={() => Certificates.downloadPdf(cert.id, cert.serial)}
+              className="rounded border border-amber-300 bg-amber-50 px-4 py-2 text-center text-sm font-medium text-amber-800 hover:bg-amber-100"
+            >
+              🏆 Certificate
+            </button>
+          ) : null}
         </div>
       </div>
     </li>
