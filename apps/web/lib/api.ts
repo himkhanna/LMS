@@ -278,6 +278,23 @@ export const Lessons = {
     }),
 };
 
+export type CourseTemplateSummary = {
+  id: string;
+  name: string;
+  description: string;
+  moduleCount: number;
+  lessonCount: number;
+};
+
+export const Templates = {
+  list: () => api<CourseTemplateSummary[]>(`/api/v1/course-templates`),
+  createCourse: (input: { templateId: string; title?: string }) =>
+    api<Course>(`/api/v1/courses/from-template`, {
+      method: "POST",
+      body: input,
+    }),
+};
+
 export const Assets = {
   list: (lessonId: string) => api<AssetDto[]>(`/api/v1/lessons/${lessonId}/assets`),
   upload: (lessonId: string, file: File) => {
