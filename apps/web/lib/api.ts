@@ -716,3 +716,87 @@ export const Quizzes = {
     }),
   getAttempt: (id: string) => api<Attempt>(`/api/v1/attempts/${id}`),
 };
+
+// ---- Reports (course-service, HR/admin only) ----
+
+export type OrgOverview = {
+  totalCourses: number;
+  publishedCourses: number;
+  totalEnrollments: number;
+  activeEnrollments: number;
+  completedEnrollments: number;
+  overdueEnrollments: number;
+  mandatoryOutstanding: number;
+  totalLearners: number;
+  totalQuizAttempts: number;
+  passedQuizAttempts: number;
+};
+
+export type CourseReport = {
+  courseId: string;
+  courseTitle: string;
+  status: string;
+  totalEnrolled: number;
+  assigned: number;
+  inProgress: number;
+  completed: number;
+  waived: number;
+  overdue: number;
+  mandatoryEnrolled: number;
+  mandatoryCompleted: number;
+  avgProgressPct: number;
+  avgQuizScorePct: number | null;
+  totalQuizAttempts: number;
+  passedQuizAttempts: number;
+};
+
+export type LearnerReport = {
+  userId: string;
+  userEmail: string | null;
+  userName: string | null;
+  totalEnrollments: number;
+  completedEnrollments: number;
+  overdueEnrollments: number;
+  totalAttempts: number;
+  passedAttempts: number;
+  avgQuizScorePct: number | null;
+  enrollments: Enrollment[];
+  recentAttempts: Attempt[];
+};
+
+async function downloadCsv(path: string, filename: string): Promise<void> {
+  const session = getSession();
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: session ? { Authorization: `Bearer ${session.token}` } : {},
+  });
+  if (!res.ok) {
+    throw new ApiError(res.status, `${res.status} ${res.statusText}`, await res.text());
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export const Reports = {
+  overview: () => api<OrgOverview>(`/api/v1/reports/overview`),
+  courses: () => api<CourseReport[]>(`/api/v1/reports/courses`),
+  course: (id: string) => api<CourseReport>(`/api/v1/reports/courses/${id}`),
+  roster: (id: string, status?: EnrollmentStatus) => {
+    const qs = status ? `?status=${status}` : "";
+    return api<Enrollment[]>(`/api/v1/reports/courses/${id}/roster${qs}`);
+  },
+  downloadRosterCsv: (id: string, status?: EnrollmentStatus) => {
+    const qs = status ? `?status=${status}` : "";
+    return downloadCsv(`/api/v1/reports/courses/${id}/roster.csv${qs}`, `course-${id}-roster.csv`);
+  },
+  overdue: () => api<Enrollment[]>(`/api/v1/reports/overdue`),
+  downloadOverdueCsv: () =>
+    downloadCsv(`/api/v1/reports/overdue.csv`, `overdue.csv`),
+  learner: (userId: string) => api<LearnerReport>(`/api/v1/reports/learners/${userId}`),
+};

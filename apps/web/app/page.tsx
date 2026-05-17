@@ -90,6 +90,9 @@ export default function Home() {
           <Link href="/courses" className="btn-secondary">
             Browse courses
           </Link>
+          <Link href="/reports" className="btn-secondary">
+            Reports
+          </Link>
           <Link href="/admin/users" className="btn-secondary">
             Manage users
           </Link>
