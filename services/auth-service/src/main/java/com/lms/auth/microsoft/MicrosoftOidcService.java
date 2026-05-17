@@ -22,6 +22,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 @Service
@@ -37,15 +39,28 @@ public class MicrosoftOidcService {
         this.http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     }
 
-    public IdTokenClaims exchangeAndValidate(String code, String redirectUri) {
-        String body = formEncode(
+    /**
+     * Exchanges the OAuth authorization code for an id_token and validates it.
+     *
+     * @param codeVerifier the PKCE verifier the SPA stored before redirecting
+     *                     to Entra; required when the SPA sent a
+     *                     {@code code_challenge}. Pass {@code null} only for
+     *                     legacy non-PKCE flows.
+     */
+    public IdTokenClaims exchangeAndValidate(String code, String redirectUri, String codeVerifier) {
+        List<String> form = new ArrayList<>(List.of(
                 "grant_type", "authorization_code",
                 "code", code,
                 "redirect_uri", redirectUri,
                 "client_id", props.getClientId(),
                 "client_secret", props.getClientSecret(),
                 "scope", "openid profile email"
-        );
+        ));
+        if (codeVerifier != null && !codeVerifier.isBlank()) {
+            form.add("code_verifier");
+            form.add(codeVerifier);
+        }
+        String body = formEncode(form.toArray(new String[0]));
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(props.tokenEndpoint()))
                 .timeout(Duration.ofSeconds(15))
@@ -92,15 +107,30 @@ public class MicrosoftOidcService {
             String email = (String) claims.getClaim("email");
             if (email == null) email = (String) claims.getClaim("preferred_username");
             String name = (String) claims.getClaim("name");
+            List<String> roles = readStringList(claims, "roles");
+            List<String> groups = readStringList(claims, "groups");
 
             if (oid == null || oid.isBlank()) throw new MicrosoftAuthException("id_token missing oid");
             if (email == null || email.isBlank()) throw new MicrosoftAuthException("id_token missing email/preferred_username");
-            return new IdTokenClaims(oid, tid, email, name);
+            return new IdTokenClaims(oid, tid, email, name, roles, groups);
         } catch (MicrosoftAuthException e) {
             throw e;
         } catch (Exception e) {
             throw new MicrosoftAuthException("id_token validation failed: " + e.getMessage(), e);
         }
+    }
+
+    private static List<String> readStringList(JWTClaimsSet claims, String name) {
+        Object raw = claims.getClaim(name);
+        if (raw == null) return List.of();
+        if (raw instanceof List<?> list) {
+            List<String> out = new ArrayList<>(list.size());
+            for (Object o : list) {
+                if (o != null) out.add(String.valueOf(o));
+            }
+            return out;
+        }
+        return List.of(String.valueOf(raw));
     }
 
     private static String formEncode(String... kv) {
@@ -119,5 +149,12 @@ public class MicrosoftOidcService {
         return v == null || v.isNull() ? null : v.asText();
     }
 
-    public record IdTokenClaims(String oid, String tenantId, String email, String displayName) {}
+    public record IdTokenClaims(
+            String oid,
+            String tenantId,
+            String email,
+            String displayName,
+            List<String> roles,
+            List<String> groups
+    ) {}
 }

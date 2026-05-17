@@ -21,9 +21,18 @@ public class MicrosoftAuthController {
 
     @PostMapping("/callback")
     public TokenResponse callback(@Valid @RequestBody CallbackRequest req) {
-        var claims = oidc.exchangeAndValidate(req.code(), req.redirectUri());
+        var claims = oidc.exchangeAndValidate(req.code(), req.redirectUri(), req.codeVerifier());
         return auth.loginViaMicrosoft(claims);
     }
 
-    public record CallbackRequest(@NotBlank String code, @NotBlank String redirectUri) {}
+    /**
+     * {@code codeVerifier} is the PKCE verifier the SPA generated before
+     * redirecting to Entra. Required for new sign-ins; optional only for
+     * backward compatibility with old clients that may not send it.
+     */
+    public record CallbackRequest(
+            @NotBlank String code,
+            @NotBlank String redirectUri,
+            String codeVerifier
+    ) {}
 }

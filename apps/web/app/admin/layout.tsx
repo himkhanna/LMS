@@ -9,6 +9,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <Link href="/admin/users" className="block rounded px-2 py-1 hover:bg-[var(--panel)]">
           Users
         </Link>
+        <Link href="/admin/auth" className="block rounded px-2 py-1 hover:bg-[var(--panel)]">
+          Microsoft sign-in
+        </Link>
         <Link href="/admin/providers" className="block rounded px-2 py-1 hover:bg-[var(--panel)]">
           AI providers
         </Link>

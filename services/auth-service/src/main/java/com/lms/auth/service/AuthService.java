@@ -1,7 +1,9 @@
 package com.lms.auth.service;
 
 import com.lms.auth.domain.AppUser;
+import com.lms.auth.microsoft.MicrosoftOidcProperties;
 import com.lms.auth.microsoft.MicrosoftOidcService.IdTokenClaims;
+import com.lms.auth.microsoft.RoleMapper;
 import com.lms.auth.repository.AppUserRepository;
 import com.lms.auth.web.dto.CreateAdminRequest;
 import com.lms.auth.web.dto.LoginRequest;
@@ -24,9 +26,16 @@ public class AuthService {
     private final AppUserRepository users;
     private final PasswordEncoder encoder;
     private final JwtIssuer issuer;
+    private final RoleMapper roleMapper;
+    private final MicrosoftOidcProperties oidcProps;
 
-    public AuthService(AppUserRepository users, PasswordEncoder encoder, JwtIssuer issuer) {
-        this.users = users; this.encoder = encoder; this.issuer = issuer;
+    public AuthService(AppUserRepository users, PasswordEncoder encoder, JwtIssuer issuer,
+                       RoleMapper roleMapper, MicrosoftOidcProperties oidcProps) {
+        this.users = users;
+        this.encoder = encoder;
+        this.issuer = issuer;
+        this.roleMapper = roleMapper;
+        this.oidcProps = oidcProps;
     }
 
     public AppUser register(RegisterRequest req) {
@@ -66,6 +75,17 @@ public class AuthService {
         if (isNew || u.getDisplayName() == null) u.setDisplayName(claims.displayName());
         if (u.getStatus() == null) u.setStatus(AppUser.Status.ACTIVE);
         if (u.getRole() == null) u.setRole(AppUser.Role.USER);
+
+        // Role mapping from Entra claims.
+        //   - role-sync enabled (default) + Entra carries a role/group claim
+        //     ⇒ sync the user's role to the claim-derived value
+        //   - new user with no claim ⇒ default USER (already set above)
+        //   - existing user with no claim ⇒ leave their role alone so
+        //     admin overrides via /admin/users stick
+        if (oidcProps.isRoleSync()) {
+            roleMapper.resolve(claims).ifPresent(u::setRole);
+        }
+
         AppUser saved = users.save(u);
         return new TokenResponse(issuer.issue(saved), "Bearer", issuer.expirySeconds(), saved.getId());
     }

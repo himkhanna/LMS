@@ -58,6 +58,11 @@ services:
       MS_TENANT_ID: ${MS_TENANT_ID:-common}
       MS_CLIENT_ID: ${MS_CLIENT_ID:-}
       MS_CLIENT_SECRET: ${MS_CLIENT_SECRET:-}
+      MS_ROLE_SYNC: ${MS_ROLE_SYNC:-true}
+      MS_APP_ROLE_PREFIX: ${MS_APP_ROLE_PREFIX:-LMS_}
+      MS_GROUP_ADMIN: ${MS_GROUP_ADMIN:-}
+      MS_GROUP_HR: ${MS_GROUP_HR:-}
+      MS_GROUP_INSTRUCTOR: ${MS_GROUP_INSTRUCTOR:-}
     ports: ["8083:8083"]
 
   course-service:

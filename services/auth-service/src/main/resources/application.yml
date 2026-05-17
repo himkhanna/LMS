@@ -27,4 +27,16 @@ app:
       tenant-id: ${MS_TENANT_ID:common}
       client-id: ${MS_CLIENT_ID:}
       client-secret: ${MS_CLIENT_SECRET:}
+      # When true (default), each login refreshes the user's role from the
+      # id_token's `roles` + `groups` claims. Set to false to ignore Entra
+      # claims and manage roles purely in-app via /admin/users.
+      role-sync: ${MS_ROLE_SYNC:true}
+      # App role values on the Entra registration are conventionally
+      # prefixed (e.g. LMS_ADMIN). RoleMapper strips this prefix.
+      app-role-prefix: ${MS_APP_ROLE_PREFIX:LMS_}
+      # Optional: Entra security group object IDs that map to roles.
+      # App roles win over groups when both apply.
+      group-admin: ${MS_GROUP_ADMIN:}
+      group-hr: ${MS_GROUP_HR:}
+      group-instructor: ${MS_GROUP_INSTRUCTOR:}
 management.endpoints.web.exposure.include: health,info,metrics

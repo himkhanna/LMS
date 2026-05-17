@@ -12,11 +12,17 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const configured = !!MICROSOFT_CLIENT_ID;
 
-  function signIn() {
-    const state = crypto.randomUUID();
-    sessionStorage.setItem("lms.oauth.state", state);
+  async function signIn() {
     setBusy(true);
-    window.location.href = buildMicrosoftAuthorizeUrl(state);
+    try {
+      const state = crypto.randomUUID();
+      sessionStorage.setItem("lms.oauth.state", state);
+      const { url, codeVerifier } = await buildMicrosoftAuthorizeUrl(state);
+      sessionStorage.setItem("lms.oauth.pkce", codeVerifier);
+      window.location.href = url;
+    } catch {
+      setBusy(false);
+    }
   }
 
   return (

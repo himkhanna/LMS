@@ -86,10 +86,10 @@ export type LoginResponse = {
 };
 
 export const Auth = {
-  microsoftCallback: (code: string, redirectUri: string) =>
+  microsoftCallback: (code: string, redirectUri: string, codeVerifier?: string) =>
     api<LoginResponse>(`/api/v1/auth/microsoft/callback`, {
       method: "POST",
-      body: { code, redirectUri },
+      body: { code, redirectUri, codeVerifier },
       baseUrl: AUTH_BASE,
     }),
   login: (email: string, password: string) =>
@@ -103,6 +103,22 @@ export const Auth = {
 
 export type UserRole = "USER" | "ADMIN" | "INSTRUCTOR" | "HR";
 export type UserStatus = "ACTIVE" | "DISABLED";
+
+export type MicrosoftConfigView = {
+  tenantId: string | null;
+  clientId: string | null;
+  clientSecretConfigured: boolean;
+  roleSyncEnabled: boolean;
+  appRolePrefix: string;
+  adminGroupConfigured: boolean;
+  hrGroupConfigured: boolean;
+  instructorGroupConfigured: boolean;
+};
+
+export const AuthConfig = {
+  microsoft: () =>
+    api<MicrosoftConfigView>(`/api/v1/admin/auth/microsoft`, { baseUrl: AUTH_BASE }),
+};
 
 export const AdminUsers = {
   list: (params: {
@@ -168,7 +184,30 @@ export const MICROSOFT_CLIENT_ID = process.env.NEXT_PUBLIC_MS_CLIENT_ID ?? "";
 export const MICROSOFT_REDIRECT_URI =
   process.env.NEXT_PUBLIC_MS_REDIRECT_URI ?? "http://localhost:3000/auth/callback";
 
-export function buildMicrosoftAuthorizeUrl(state: string): string {
+function base64UrlEncode(bytes: ArrayBuffer | Uint8Array): string {
+  const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  let str = "";
+  for (let i = 0; i < arr.byteLength; i++) str += String.fromCharCode(arr[i]);
+  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/**
+ * Build the Microsoft Entra ID authorize URL with PKCE (S256). The
+ * verifier must be stored client-side and passed back to the auth-service
+ * on the callback so Entra can verify it during token exchange.
+ */
+export async function buildMicrosoftAuthorizeUrl(
+  state: string,
+): Promise<{ url: string; codeVerifier: string }> {
+  const random = new Uint8Array(32);
+  crypto.getRandomValues(random);
+  const codeVerifier = base64UrlEncode(random);
+  const challengeBytes = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(codeVerifier),
+  );
+  const codeChallenge = base64UrlEncode(challengeBytes);
+
   const params = new URLSearchParams({
     client_id: MICROSOFT_CLIENT_ID,
     response_type: "code",
@@ -176,8 +215,11 @@ export function buildMicrosoftAuthorizeUrl(state: string): string {
     response_mode: "query",
     scope: "openid profile email",
     state,
+    code_challenge: codeChallenge,
+    code_challenge_method: "S256",
   });
-  return `https://login.microsoftonline.com/${MICROSOFT_TENANT}/oauth2/v2.0/authorize?${params}`;
+  const url = `https://login.microsoftonline.com/${MICROSOFT_TENANT}/oauth2/v2.0/authorize?${params}`;
+  return { url, codeVerifier };
 }
 
 export type CourseStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";

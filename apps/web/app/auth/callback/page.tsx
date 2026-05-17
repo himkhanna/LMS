@@ -37,12 +37,14 @@ function CallbackView() {
       setErr("State mismatch — possible CSRF. Please try again.");
       return;
     }
+    const codeVerifier = sessionStorage.getItem("lms.oauth.pkce") ?? undefined;
     sessionStorage.removeItem("lms.oauth.state");
+    sessionStorage.removeItem("lms.oauth.pkce");
 
-    Auth.microsoftCallback(code, MICROSOFT_REDIRECT_URI)
+    Auth.microsoftCallback(code, MICROSOFT_REDIRECT_URI, codeVerifier)
       .then((res) => {
         saveSession(res.accessToken);
-        router.replace("/courses");
+        router.replace("/");
       })
       .catch((e) => setErr(e instanceof Error ? e.message : "Sign-in failed"));
   }, [params, router]);
