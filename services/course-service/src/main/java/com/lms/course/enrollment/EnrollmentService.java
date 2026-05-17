@@ -1,6 +1,9 @@
 package com.lms.course.enrollment;
 
 import com.lms.course.domain.Course;
+import com.lms.course.quiz.AttemptRepository;
+import com.lms.course.quiz.QuizRepository;
+import com.lms.course.quiz.QuizStatus;
 import com.lms.course.repository.CourseRepository;
 import com.lms.course.repository.LessonRepository;
 import com.lms.course.service.CourseNotFoundException;
@@ -21,15 +24,21 @@ public class EnrollmentService {
     private final LessonProgressRepository progress;
     private final CourseRepository courses;
     private final LessonRepository lessons;
+    private final QuizRepository quizzes;
+    private final AttemptRepository attempts;
 
     public EnrollmentService(EnrollmentRepository enrollments,
                              LessonProgressRepository progress,
                              CourseRepository courses,
-                             LessonRepository lessons) {
+                             LessonRepository lessons,
+                             QuizRepository quizzes,
+                             AttemptRepository attempts) {
         this.enrollments = enrollments;
         this.progress = progress;
         this.courses = courses;
         this.lessons = lessons;
+        this.quizzes = quizzes;
+        this.attempts = attempts;
     }
 
     public record AssignResult(int created, int skipped, List<Enrollment> enrollments) {}
@@ -152,16 +161,26 @@ public class EnrollmentService {
         });
     }
 
-    private void recomputeEnrollmentProgress(UUID userId, UUID courseId) {
+    /**
+     * Recompute progress for a (user, course) pair. Required items = total
+     * lessons + published quizzes attached to the course. Completed items =
+     * lesson_progress rows with status COMPLETED + distinct passed quizzes.
+     * Safe to call from any event that might change either side.
+     */
+    public void recomputeEnrollmentProgress(UUID userId, UUID courseId) {
         Course course = courses.findById(courseId).orElse(null);
         if (course == null) return;
         int totalLessons = course.getModules().stream()
                 .mapToInt(m -> m.getLessons().size())
                 .sum();
-        if (totalLessons == 0) return;
-        long completed = progress.countByUserIdAndCourseIdAndStatus(
+        long publishedQuizzes = quizzes.countByCourseIdAndStatus(courseId, QuizStatus.PUBLISHED);
+        int totalItems = totalLessons + (int) publishedQuizzes;
+        if (totalItems == 0) return;
+        long completedLessons = progress.countByUserIdAndCourseIdAndStatus(
                 userId, courseId, LessonProgressStatus.COMPLETED);
-        int pct = (int) Math.round((completed * 100.0) / totalLessons);
+        long passedQuizzes = attempts.countPassedPublishedQuizzesForUserAndCourse(userId, courseId);
+        long completedItems = completedLessons + passedQuizzes;
+        int pct = (int) Math.round((completedItems * 100.0) / totalItems);
         enrollments.findByCourseIdAndUserId(courseId, userId).ifPresent(e -> {
             e.setProgressPct(pct);
             if (e.getStartedAt() == null) e.setStartedAt(OffsetDateTime.now());

@@ -1,10 +1,13 @@
 package com.lms.course.quiz;
 
 import com.lms.course.domain.Course;
+import com.lms.course.enrollment.EnrollmentService;
 import com.lms.course.repository.CourseModuleRepository;
 import com.lms.course.repository.CourseRepository;
 import com.lms.course.repository.LessonRepository;
 import com.lms.course.service.CourseNotFoundException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,19 +28,22 @@ public class QuizService {
     private final CourseRepository courses;
     private final CourseModuleRepository modules;
     private final LessonRepository lessons;
+    private final EnrollmentService enrollments;
 
     public QuizService(QuizRepository quizzes,
                        QuestionRepository questions,
                        AttemptRepository attempts,
                        CourseRepository courses,
                        CourseModuleRepository modules,
-                       LessonRepository lessons) {
+                       LessonRepository lessons,
+                       @Lazy @Autowired EnrollmentService enrollments) {
         this.quizzes = quizzes;
         this.questions = questions;
         this.attempts = attempts;
         this.courses = courses;
         this.modules = modules;
         this.lessons = lessons;
+        this.enrollments = enrollments;
     }
 
     public Quiz create(UUID courseId, QuizRequests.CreateQuiz req) {
@@ -246,6 +252,11 @@ public class QuizService {
         attempt.setScorePct(pct);
         attempt.setPassed(pct >= quiz.getPassScore());
         attempt.setSubmittedAt(OffsetDateTime.now());
+        // Roll into enrollment progress so passing a PUBLISHED quiz counts
+        // toward the course completion percentage. Safe no-op if the user is
+        // not enrolled or the quiz is still DRAFT.
+        attempts.flush();
+        enrollments.recomputeEnrollmentProgress(userId, quiz.getCourse().getId());
         return attempt;
     }
 

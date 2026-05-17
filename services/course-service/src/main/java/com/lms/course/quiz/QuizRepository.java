@@ -7,4 +7,5 @@ import java.util.UUID;
 
 public interface QuizRepository extends JpaRepository<Quiz, UUID> {
     List<Quiz> findByCourseIdOrderByPositionAsc(UUID courseId);
+    long countByCourseIdAndStatus(UUID courseId, QuizStatus status);
 }
