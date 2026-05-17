@@ -58,16 +58,23 @@ public class CourseGenerationService {
         int moduleCount = request.moduleCount() != null ? request.moduleCount() : 3;
         int lessonsPerModule = request.lessonsPerModule() != null ? request.lessonsPerModule() : 3;
 
-        String userPrompt = """
-                Design a course on: %s
-                Modules: %d
-                Lessons per module: %d
-                Audience: %s
-                """.formatted(
-                request.topic(),
-                moduleCount,
-                lessonsPerModule,
-                request.audience() != null ? request.audience() : "general learners");
+        StringBuilder prompt = new StringBuilder()
+                .append("Design a course on: ").append(request.topic()).append('\n')
+                .append("Modules: ").append(moduleCount).append('\n')
+                .append("Lessons per module: ").append(lessonsPerModule).append('\n')
+                .append("Audience: ")
+                .append(request.audience() != null ? request.audience() : "general learners")
+                .append('\n');
+        if (request.sourceMaterial() != null && !request.sourceMaterial().isBlank()) {
+            prompt.append('\n')
+                    .append("Use the following source material (extracted from a slide deck) as the")
+                    .append(" primary basis for the course. Design a clean pedagogical structure;")
+                    .append(" do not blindly mirror the slide order.\n")
+                    .append("--- SOURCE MATERIAL ---\n")
+                    .append(request.sourceMaterial())
+                    .append("\n--- END SOURCE MATERIAL ---\n");
+        }
+        String userPrompt = prompt.toString();
 
         var aiReq = new AiGatewayClient.CompletionRequest(
                 request.providerId(),
@@ -137,8 +144,15 @@ public class CourseGenerationService {
             Integer lessonsPerModule,
             UUID providerId,
             String model,
-            Integer maxTokens
-    ) {}
+            Integer maxTokens,
+            String sourceMaterial
+    ) {
+        public GenerateRequest(String topic, String audience, Integer moduleCount,
+                               Integer lessonsPerModule, UUID providerId, String model,
+                               Integer maxTokens) {
+            this(topic, audience, moduleCount, lessonsPerModule, providerId, model, maxTokens, null);
+        }
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record GeneratedCourse(String title, String description, List<GeneratedModule> modules) {}

@@ -375,7 +375,35 @@ export type GenerateCourseInput = {
   maxTokens?: number;
 };
 
+export type GenerateCourseFromFileInput = {
+  file: File;
+  mode?: "ai" | "mechanical";
+  topic?: string;
+  audience?: string;
+  moduleCount?: number;
+  lessonsPerModule?: number;
+  providerId?: string;
+  model?: string;
+  maxTokens?: number;
+};
+
 export const AiCourses = {
   generate: (input: GenerateCourseInput) =>
     api<Course>(`/api/v1/courses/generate`, { method: "POST", body: input }),
+  generateFromFile: (input: GenerateCourseFromFileInput) => {
+    const fd = new FormData();
+    fd.append("file", input.file);
+    if (input.mode) fd.append("mode", input.mode);
+    if (input.topic) fd.append("topic", input.topic);
+    if (input.audience) fd.append("audience", input.audience);
+    if (input.moduleCount != null) fd.append("moduleCount", String(input.moduleCount));
+    if (input.lessonsPerModule != null) fd.append("lessonsPerModule", String(input.lessonsPerModule));
+    if (input.providerId) fd.append("providerId", input.providerId);
+    if (input.model) fd.append("model", input.model);
+    if (input.maxTokens != null) fd.append("maxTokens", String(input.maxTokens));
+    return api<Course>(`/api/v1/courses/generate-from-file`, {
+      method: "POST",
+      body: fd,
+    });
+  },
 };

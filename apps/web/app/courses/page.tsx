@@ -40,6 +40,9 @@ export default function CoursesPage() {
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">Courses</h1>
         <div className="flex gap-2">
+          <Link href="/courses/generate-from-ppt" className="btn-secondary">
+            Upload PPT
+          </Link>
           <Link href="/courses/generate" className="btn-secondary">
             Generate with AI
           </Link>
