@@ -71,7 +71,9 @@ export type AuthUser = {
   id: string;
   email: string;
   displayName: string | null;
-  role: "USER" | "ADMIN" | "INSTRUCTOR";
+  role: UserRole;
+  managerEmail?: string | null;
+  department?: string | null;
   status: "ACTIVE" | "DISABLED";
   createdAt: string;
 };
@@ -99,7 +101,7 @@ export const Auth = {
   me: () => api<AuthUser>(`/api/v1/auth/me`, { baseUrl: AUTH_BASE }),
 };
 
-export type UserRole = "USER" | "ADMIN" | "INSTRUCTOR";
+export type UserRole = "USER" | "ADMIN" | "INSTRUCTOR" | "HR";
 export type UserStatus = "ACTIVE" | "DISABLED";
 
 export const AdminUsers = {
@@ -120,13 +122,29 @@ export const AdminUsers = {
   },
   get: (id: string) =>
     api<AuthUser>(`/api/v1/admin/users/${id}`, { baseUrl: AUTH_BASE }),
-  create: (input: { email: string; password: string; displayName: string; role?: UserRole }) =>
+  create: (input: {
+    email: string;
+    password: string;
+    displayName: string;
+    role?: UserRole;
+    managerEmail?: string;
+    department?: string;
+  }) =>
     api<AuthUser>(`/api/v1/admin/users`, {
       method: "POST",
       body: input,
       baseUrl: AUTH_BASE,
     }),
-  update: (id: string, patch: { displayName?: string; role?: UserRole; status?: UserStatus }) =>
+  update: (
+    id: string,
+    patch: {
+      displayName?: string;
+      role?: UserRole;
+      status?: UserStatus;
+      managerEmail?: string | null;
+      department?: string | null;
+    },
+  ) =>
     api<AuthUser>(`/api/v1/admin/users/${id}`, {
       method: "PATCH",
       body: patch,
@@ -422,6 +440,116 @@ export type GenerateCourseFromFileInput = {
   providerId?: string;
   model?: string;
   maxTokens?: number;
+};
+
+// ---- Directory (auth-service, HR/admin only) ----
+
+export type DirectoryUser = {
+  id: string;
+  email: string;
+  displayName: string | null;
+  role: UserRole;
+  status: UserStatus;
+  department: string | null;
+  managerEmail: string | null;
+};
+
+export const Directory = {
+  search: (params: { q?: string; department?: string; page?: number; size?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.q) qs.set("q", params.q);
+    if (params.department) qs.set("department", params.department);
+    qs.set("page", String(params.page ?? 0));
+    qs.set("size", String(params.size ?? 50));
+    return api<Page<DirectoryUser>>(`/api/v1/directory/users?${qs}`, {
+      baseUrl: AUTH_BASE,
+    });
+  },
+  byIds: (ids: string[]) => {
+    const qs = new URLSearchParams();
+    ids.forEach((id) => qs.append("ids", id));
+    return api<DirectoryUser[]>(`/api/v1/directory/users/by-ids?${qs}`, {
+      baseUrl: AUTH_BASE,
+    });
+  },
+};
+
+// ---- Enrollments (course-service) ----
+
+export type EnrollmentStatus =
+  | "ASSIGNED"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "WAIVED";
+
+export type Enrollment = {
+  id: string;
+  courseId: string;
+  courseTitle: string;
+  userId: string;
+  userEmail: string;
+  userName: string | null;
+  status: EnrollmentStatus;
+  mandatory: boolean;
+  assignedByEmail: string | null;
+  assignedAt: string;
+  dueAt: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  progressPct: number;
+  overdue: boolean;
+};
+
+export type AssignLearner = { userId: string; email: string; displayName?: string | null };
+
+export type AssignResponse = {
+  created: number;
+  skipped: number;
+  enrollments: Enrollment[];
+};
+
+export const Enrollments = {
+  assign: (
+    courseId: string,
+    input: { learners: AssignLearner[]; dueAt?: string | null; mandatory?: boolean },
+  ) =>
+    api<AssignResponse>(`/api/v1/courses/${courseId}/enrollments`, {
+      method: "POST",
+      body: input,
+    }),
+  listForCourse: (courseId: string, status?: EnrollmentStatus) => {
+    const qs = status ? `?status=${status}` : "";
+    return api<Enrollment[]>(`/api/v1/courses/${courseId}/enrollments${qs}`);
+  },
+  unassign: (id: string) =>
+    api<void>(`/api/v1/enrollments/${id}`, { method: "DELETE" }),
+  waive: (id: string) =>
+    api<Enrollment>(`/api/v1/enrollments/${id}/waive`, { method: "POST" }),
+  mine: (status?: EnrollmentStatus) => {
+    const qs = status ? `?status=${status}` : "";
+    return api<Enrollment[]>(`/api/v1/me/enrollments${qs}`);
+  },
+};
+
+export type LessonProgressStatus = "STARTED" | "COMPLETED";
+
+export type LessonProgress = {
+  id: string;
+  userId: string;
+  lessonId: string;
+  courseId: string;
+  status: LessonProgressStatus;
+  startedAt: string;
+  completedAt: string | null;
+};
+
+export const Progress = {
+  markStarted: (lessonId: string) =>
+    api<LessonProgress>(`/api/v1/me/lessons/${lessonId}/start`, { method: "POST" }),
+  markCompleted: (lessonId: string) =>
+    api<LessonProgress>(`/api/v1/me/lessons/${lessonId}/complete`, { method: "POST" }),
+  forCourse: (courseId: string) =>
+    api<LessonProgress[]>(`/api/v1/me/courses/${courseId}/progress`),
 };
 
 export const AiCourses = {

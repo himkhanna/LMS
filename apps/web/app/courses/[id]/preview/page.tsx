@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import DOMPurify from "isomorphic-dompurify";
-import { Courses, type Course, type LessonDto } from "@/lib/api";
+import { Courses, Progress, type Course, type LessonDto } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 
 const PER_SLIDE_SECS = 15;
@@ -25,6 +25,8 @@ export default function CoursePreviewPage() {
   const [idx, setIdx] = useState(0);
   const [remaining, setRemaining] = useState(PER_SLIDE_SECS);
   const [done, setDone] = useState(false);
+  const startedRef = useRef<Set<string>>(new Set());
+  const completedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!getSession()) {
@@ -57,7 +59,24 @@ export default function CoursePreviewPage() {
 
   useEffect(() => {
     setRemaining(PER_SLIDE_SECS);
-  }, [idx]);
+    const slide = slides[idx];
+    if (!slide) return;
+    const lessonId = slide.lesson.id;
+    if (!startedRef.current.has(lessonId)) {
+      startedRef.current.add(lessonId);
+      Progress.markStarted(lessonId).catch(() => {
+        // ignore: progress tracking is best-effort
+      });
+    }
+  }, [idx, slides]);
+
+  const markLessonComplete = useCallback((lessonId: string) => {
+    if (completedRef.current.has(lessonId)) return;
+    completedRef.current.add(lessonId);
+    Progress.markCompleted(lessonId).catch(() => {
+      // ignore: progress tracking is best-effort
+    });
+  }, []);
 
   useEffect(() => {
     if (done || slides.length === 0) return;
@@ -69,12 +88,14 @@ export default function CoursePreviewPage() {
   const goNext = useCallback(() => {
     if (slides.length === 0) return;
     if (remaining > 0) return;
+    const current = slides[idx];
+    if (current) markLessonComplete(current.lesson.id);
     if (idx >= slides.length - 1) {
       setDone(true);
       return;
     }
     setIdx((i) => i + 1);
-  }, [idx, remaining, slides.length]);
+  }, [idx, remaining, slides, markLessonComplete]);
 
   const goPrev = useCallback(() => {
     if (done) {

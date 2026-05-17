@@ -75,7 +75,10 @@ export default function Home() {
           Quick actions
         </h2>
         <div className="flex flex-wrap gap-2">
-          <Link href="/courses/new" className="btn-primary">
+          <Link href="/my-learning" className="btn-primary">
+            My learning
+          </Link>
+          <Link href="/courses/new" className="btn-secondary">
             New course
           </Link>
           <Link href="/courses/generate-from-ppt" className="btn-secondary">

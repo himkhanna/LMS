@@ -12,7 +12,7 @@ import {
 } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 
-const ROLES: UserRole[] = ["USER", "ADMIN", "INSTRUCTOR"];
+const ROLES: UserRole[] = ["USER", "HR", "INSTRUCTOR", "ADMIN"];
 const STATUSES: UserStatus[] = ["ACTIVE", "DISABLED"];
 
 export default function AdminUsersPage() {
@@ -100,6 +100,8 @@ export default function AdminUsersPage() {
                 <tr>
                   <th>Email</th>
                   <th>Name</th>
+                  <th>Department</th>
+                  <th>Manager</th>
                   <th>Role</th>
                   <th>Status</th>
                   <th>Created</th>
@@ -165,10 +167,39 @@ function UserRow({ user, onChange }: { user: AuthUser; onChange: () => void }) {
     finally { setBusy(false); }
   }
 
+  async function editOrg(field: "department" | "managerEmail", current: string | null | undefined) {
+    const label = field === "department" ? "Department" : "Manager email";
+    const next = prompt(`${label} for ${user.email}:`, current ?? "");
+    if (next === null) return;
+    setBusy(true);
+    try {
+      await AdminUsers.update(user.id, { [field]: next.trim() || null } as Record<string, string | null>);
+      onChange();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <tr>
       <td className="font-medium">{user.email}</td>
       <td className="text-[var(--muted)]">{user.displayName ?? "—"}</td>
+      <td className="text-xs">
+        <button
+          onClick={() => editOrg("department", user.department)}
+          className="text-left text-[var(--muted)] hover:text-[var(--text)]"
+        >
+          {user.department || <span className="italic opacity-60">add…</span>}
+        </button>
+      </td>
+      <td className="text-xs">
+        <button
+          onClick={() => editOrg("managerEmail", user.managerEmail)}
+          className="text-left text-[var(--muted)] hover:text-[var(--text)]"
+        >
+          {user.managerEmail || <span className="italic opacity-60">add…</span>}
+        </button>
+      </td>
       <td>
         <select
           value={user.role}

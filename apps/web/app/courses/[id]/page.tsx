@@ -22,13 +22,16 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   Courses,
+  Enrollments,
   Lessons,
   Modules,
   type Course,
+  type Enrollment,
   type LessonDto,
   type ModuleDto,
 } from "@/lib/api";
-import { getSession } from "@/lib/auth";
+import { getSession, hasRole } from "@/lib/auth";
+import { AssignDialog } from "@/components/AssignDialog";
 
 export default function CourseDetailPage() {
   const router = useRouter();
@@ -36,6 +39,18 @@ export default function CourseDetailPage() {
   const [course, setCourse] = useState<Course | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [enrollments, setEnrollments] = useState<Enrollment[] | null>(null);
+  const canAssign = hasRole("ROLE_ADMIN") || hasRole("ROLE_HR") || hasRole("ROLE_INSTRUCTOR");
+
+  async function reloadEnrollments() {
+    if (!canAssign) return;
+    try {
+      setEnrollments(await Enrollments.listForCourse(params.id));
+    } catch {
+      // non-fatal: panel just stays empty
+    }
+  }
 
   async function reload() {
     setErr(null);
@@ -52,6 +67,7 @@ export default function CourseDetailPage() {
       return;
     }
     reload();
+    reloadEnrollments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id, router]);
 
@@ -134,6 +150,14 @@ export default function CourseDetailPage() {
           >
             Preview
           </Link>
+          {canAssign ? (
+            <button
+              onClick={() => setAssignOpen(true)}
+              className="rounded bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--accent-hover)]"
+            >
+              Assign learners
+            </button>
+          ) : null}
           {course.status === "PUBLISHED" ? (
             <button
               onClick={unpublish}
@@ -177,7 +201,147 @@ export default function CourseDetailPage() {
           <SortableModuleList modules={course.modules} onReorder={onModulesReorder} onChange={reload} />
         )}
       </section>
+
+      {canAssign ? (
+        <EnrollmentsPanel
+          enrollments={enrollments}
+          onChange={reloadEnrollments}
+        />
+      ) : null}
+
+      <AssignDialog
+        courseId={course.id}
+        courseTitle={course.title}
+        open={assignOpen}
+        onClose={() => setAssignOpen(false)}
+        onAssigned={() => reloadEnrollments()}
+      />
     </div>
+  );
+}
+
+function EnrollmentsPanel({
+  enrollments,
+  onChange,
+}: {
+  enrollments: Enrollment[] | null;
+  onChange: () => void;
+}) {
+  if (enrollments === null) {
+    return (
+      <section className="space-y-3">
+        <h2 className="text-lg font-medium">Assigned learners</h2>
+        <p className="text-sm text-[var(--muted)]">Loading…</p>
+      </section>
+    );
+  }
+  return (
+    <section className="space-y-3">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-lg font-medium">Assigned learners</h2>
+        <span className="text-xs text-[var(--muted)]">{enrollments.length} total</span>
+      </div>
+      {enrollments.length === 0 ? (
+        <p className="text-sm text-[var(--muted)]">
+          No learners assigned yet. Click <span className="font-medium">Assign learners</span> above.
+        </p>
+      ) : (
+        <div className="table-card">
+          <table className="table-dense">
+            <thead>
+              <tr>
+                <th>Learner</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Due</th>
+                <th>Assigned</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {enrollments.map((e) => (
+                <EnrollmentRow key={e.id} e={e} onChange={onChange} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function EnrollmentRow({ e, onChange }: { e: Enrollment; onChange: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const statusChip =
+    e.status === "COMPLETED"
+      ? "chip chip-success"
+      : e.overdue
+      ? "chip chip-danger"
+      : e.status === "IN_PROGRESS"
+      ? "chip chip-info"
+      : e.status === "WAIVED"
+      ? "chip chip-muted"
+      : "chip chip-warn";
+  const statusLabel = e.overdue && e.status !== "COMPLETED" ? "OVERDUE" : e.status;
+
+  async function unassign() {
+    if (!confirm(`Unassign ${e.userName ?? e.userEmail} from this course?`)) return;
+    setBusy(true);
+    try {
+      await Enrollments.unassign(e.id);
+      onChange();
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function waive() {
+    if (!confirm(`Mark this course as waived for ${e.userName ?? e.userEmail}?`)) return;
+    setBusy(true);
+    try {
+      await Enrollments.waive(e.id);
+      onChange();
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <tr>
+      <td>
+        <div className="font-medium">{e.userName ?? e.userEmail}</div>
+        <div className="text-xs text-[var(--muted)]">{e.userEmail}</div>
+      </td>
+      <td>
+        <span className={statusChip}>{statusLabel}</span>
+        {e.mandatory ? <span className="ml-1 chip chip-warn">MANDATORY</span> : null}
+      </td>
+      <td className="w-40">
+        <div className="flex items-center gap-2">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--border)]">
+            <div
+              className="h-full bg-[var(--accent)]"
+              style={{ width: `${Math.max(2, e.progressPct)}%` }}
+            />
+          </div>
+          <span className="w-9 text-right text-xs tabular-nums text-[var(--muted)]">
+            {e.progressPct}%
+          </span>
+        </div>
+      </td>
+      <td className="text-xs text-[var(--muted)]">
+        {e.dueAt ? new Date(e.dueAt).toLocaleDateString() : "—"}
+      </td>
+      <td className="text-xs text-[var(--muted)]">
+        {new Date(e.assignedAt).toLocaleDateString()}
+      </td>
+      <td className="text-right">
+        <button onClick={waive} disabled={busy || e.status === "COMPLETED" || e.status === "WAIVED"} className="btn-mini">
+          Waive
+        </button>{" "}
+        <button onClick={unassign} disabled={busy} className="btn-mini btn-mini-danger">
+          Unassign
+        </button>
+      </td>
+    </tr>
   );
 }
 

@@ -29,6 +29,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               </span>
             </Link>
             <nav className="flex items-center gap-5 text-sm">
+              <Link href="/my-learning" className="hover:text-[var(--header-accent)]">
+                My Learning
+              </Link>
               <Link href="/courses" className="hover:text-[var(--header-accent)]">
                 Courses
               </Link>
