@@ -26,6 +26,26 @@ spring:
     multipart:
       max-file-size: 100MB
       max-request-size: 110MB
+  # SMTP defaults are tuned for Microsoft 365 / Exchange Online. Set
+  # MAIL_USERNAME + MAIL_PASSWORD to enable real delivery; otherwise the
+  # EmailSender falls back to log-only mode in dev.
+  mail:
+    host: ${MAIL_HOST:smtp.office365.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    protocol: smtp
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            trust: ${MAIL_HOST:smtp.office365.com}
+        transport:
+          protocol: smtp
 
 server:
   port: ${SERVER_PORT:8081}
@@ -43,6 +63,15 @@ app:
     azure:
       connection-string: ${AZURE_BLOB_CONN:}
       container: ${AZURE_BLOB_CONTAINER:lms-assets}
+  notify:
+    email:
+      # When true (default) and spring.mail credentials are present, the
+      # platform sends real email via M365. When credentials are missing or
+      # this is set to false, EmailSender logs the message and returns
+      # success — keeps the workflow loop testable without SMTP.
+      enabled: ${NOTIFY_EMAIL_ENABLED:true}
+      from: ${NOTIFY_EMAIL_FROM:${MAIL_USERNAME:learning@idcdigital.local}}
+    reminder-cron: ${NOTIFY_REMINDER_CRON:0 0 9 * * *}
 
 management:
   endpoints:

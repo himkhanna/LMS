@@ -74,6 +74,15 @@ services:
       CORS_ALLOWED_ORIGINS: http://localhost:3000
       AI_GATEWAY_URL: http://ai-gateway-service:8082
       STORAGE_LOCAL_ROOT: /var/lib/lms/assets
+      # M365 SMTP — leave MAIL_USERNAME/MAIL_PASSWORD blank for log-only dev mode
+      MAIL_HOST: ${MAIL_HOST:-smtp.office365.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      NOTIFY_EMAIL_ENABLED: ${NOTIFY_EMAIL_ENABLED:-true}
+      NOTIFY_EMAIL_FROM: ${NOTIFY_EMAIL_FROM:-}
+      NOTIFY_EMAIL_FROM_NAME: ${NOTIFY_EMAIL_FROM_NAME:-IDC Digital Learning}
+      NOTIFY_REMINDER_CRON: ${NOTIFY_REMINDER_CRON:-0 0 9 * * *}
     volumes: [course_assets:/var/lib/lms/assets]
     ports: ["8081:8081"]
 
