@@ -791,10 +791,33 @@ async function downloadCsv(path: string, filename: string): Promise<void> {
   URL.revokeObjectURL(url);
 }
 
+export type TeamReport = {
+  managerEmail: string;
+  totalReports: number;
+  activeEnrollments: number;
+  completedEnrollments: number;
+  overdueEnrollments: number;
+  directReports: {
+    userId: string;
+    userEmail: string;
+    userName: string | null;
+    department: string | null;
+    totalEnrollments: number;
+    activeEnrollments: number;
+    completedEnrollments: number;
+    overdueEnrollments: number;
+    avgProgressPct: number;
+  }[];
+};
+
 export const Reports = {
   overview: () => api<OrgOverview>(`/api/v1/reports/overview`),
   courses: () => api<CourseReport[]>(`/api/v1/reports/courses`),
   course: (id: string) => api<CourseReport>(`/api/v1/reports/courses/${id}`),
+  team: (manager?: string) => {
+    const qs = manager ? `?manager=${encodeURIComponent(manager)}` : "";
+    return api<TeamReport>(`/api/v1/reports/team${qs}`);
+  },
   roster: (id: string, status?: EnrollmentStatus) => {
     const qs = status ? `?status=${status}` : "";
     return api<Enrollment[]>(`/api/v1/reports/courses/${id}/roster${qs}`);

@@ -33,6 +33,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Link href="/my-learning" className="hover:text-[var(--header-accent)]">
                 My Learning
               </Link>
+              <Link href="/team" className="hover:text-[var(--header-accent)]">
+                My Team
+              </Link>
               <Link href="/courses" className="hover:text-[var(--header-accent)]">
                 Courses
               </Link>

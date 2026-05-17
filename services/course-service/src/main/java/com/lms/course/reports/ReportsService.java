@@ -167,6 +167,67 @@ public class ReportsService {
                 userAttempts.stream().map(AttemptDto::from).toList());
     }
 
+    /**
+     * Roll up direct-report enrollments for one manager. Uses the
+     * denormalized {@code manager_email} on the enrollment row so we
+     * don't have to call auth-service.
+     */
+    public TeamReport teamReport(String managerEmail) {
+        String normalized = managerEmail == null ? "" : managerEmail.trim().toLowerCase();
+        List<Enrollment> all = em.createQuery("""
+                        SELECT e FROM Enrollment e
+                        WHERE lower(e.managerEmail) = :mgr
+                        ORDER BY e.userEmail, e.assignedAt DESC
+                        """, Enrollment.class)
+                .setParameter("mgr", normalized)
+                .getResultList();
+
+        // group by user
+        java.util.Map<java.util.UUID, java.util.List<Enrollment>> byUser = new java.util.LinkedHashMap<>();
+        for (Enrollment e : all) {
+            byUser.computeIfAbsent(e.getUserId(), k -> new java.util.ArrayList<>()).add(e);
+        }
+
+        long activeAll = 0, completedAll = 0, overdueAll = 0;
+        java.util.List<TeamReport.DirectReport> reports = new java.util.ArrayList<>(byUser.size());
+        OffsetDateTime now = OffsetDateTime.now();
+        for (var entry : byUser.entrySet()) {
+            java.util.List<Enrollment> userEnr = entry.getValue();
+            long uActive = userEnr.stream()
+                    .filter(e -> e.getStatus() == EnrollmentStatus.ASSIGNED
+                            || e.getStatus() == EnrollmentStatus.IN_PROGRESS)
+                    .count();
+            long uCompleted = userEnr.stream()
+                    .filter(e -> e.getStatus() == EnrollmentStatus.COMPLETED).count();
+            long uOverdue = userEnr.stream()
+                    .filter(e -> e.getDueAt() != null
+                            && e.getStatus() != EnrollmentStatus.COMPLETED
+                            && e.getStatus() != EnrollmentStatus.WAIVED
+                            && e.getDueAt().isBefore(now))
+                    .count();
+            int avgProgress = userEnr.isEmpty() ? 0
+                    : (int) Math.round(userEnr.stream().mapToInt(Enrollment::getProgressPct).average().orElse(0));
+            Enrollment first = userEnr.get(0);
+            reports.add(new TeamReport.DirectReport(
+                    first.getUserId(),
+                    first.getUserEmail(),
+                    first.getUserName(),
+                    first.getDepartment(),
+                    userEnr.size(),
+                    uActive, uCompleted, uOverdue,
+                    avgProgress));
+            activeAll += uActive;
+            completedAll += uCompleted;
+            overdueAll += uOverdue;
+        }
+        // Sort: overdue first, then active count
+        reports.sort(java.util.Comparator
+                .comparingLong(TeamReport.DirectReport::overdueEnrollments).reversed()
+                .thenComparingLong(TeamReport.DirectReport::activeEnrollments).reversed());
+
+        return new TeamReport(normalized, reports.size(), activeAll, completedAll, overdueAll, reports);
+    }
+
     // ---- internals ----
 
     private CourseReport summarize(Course c) {
