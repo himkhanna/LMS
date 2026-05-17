@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import DOMPurify from "isomorphic-dompurify";
 import { Courses, type Course, type LessonDto } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 
@@ -171,11 +172,7 @@ export default function CoursePreviewPage() {
 
       <div className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-8 shadow-sm">
         <h1 className="text-3xl font-semibold leading-tight">{slide.lesson.title}</h1>
-        <div className="mt-6 whitespace-pre-wrap text-[var(--text)] leading-relaxed">
-          {slide.lesson.content ?? (
-            <span className="italic text-[var(--muted)]">(no content for this lesson)</span>
-          )}
-        </div>
+        <LessonBody content={slide.lesson.content} />
       </div>
 
       <div className="flex items-center justify-between">
@@ -201,6 +198,27 @@ export default function CoursePreviewPage() {
               : "Next →"}
         </button>
       </div>
+    </div>
+  );
+}
+
+function LessonBody({ content }: { content: string | null }) {
+  if (!content) {
+    return <p className="mt-6 italic text-[var(--muted)]">(no content for this lesson)</p>;
+  }
+  const looksLikeHtml = /<[a-z][^>]*>/i.test(content);
+  if (looksLikeHtml) {
+    const safe = DOMPurify.sanitize(content);
+    return (
+      <div
+        className="prose prose-invert mt-6 max-w-none leading-relaxed"
+        dangerouslySetInnerHTML={{ __html: safe }}
+      />
+    );
+  }
+  return (
+    <div className="mt-6 whitespace-pre-wrap leading-relaxed text-[var(--text)]">
+      {content}
     </div>
   );
 }

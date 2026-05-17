@@ -243,6 +243,11 @@ export const Modules = {
       method: "POST",
       body: { title },
     }),
+  update: (moduleId: string, patch: { title?: string }) =>
+    api<ModuleDto>(`/api/v1/modules/${moduleId}`, {
+      method: "PATCH",
+      body: patch,
+    }),
   delete: (moduleId: string) =>
     api<void>(`/api/v1/modules/${moduleId}`, { method: "DELETE" }),
 };
@@ -253,6 +258,11 @@ export const Lessons = {
     api<LessonDto>(`/api/v1/courses/modules/${moduleId}/lessons`, {
       method: "POST",
       body: input,
+    }),
+  update: (id: string, patch: { title?: string; content?: string; durationSecs?: number }) =>
+    api<LessonDto>(`/api/v1/lessons/${id}`, {
+      method: "PATCH",
+      body: patch,
     }),
   delete: (id: string) =>
     api<void>(`/api/v1/lessons/${id}`, { method: "DELETE" }),
