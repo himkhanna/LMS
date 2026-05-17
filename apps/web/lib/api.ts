@@ -572,3 +572,147 @@ export const AiCourses = {
     });
   },
 };
+
+// ---- Quizzes (course-service) ----
+
+export type QuestionType =
+  | "MCQ_SINGLE"
+  | "MCQ_MULTI"
+  | "TRUE_FALSE"
+  | "SHORT_ANSWER";
+
+export type QuizStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
+
+export type Question = {
+  id: string;
+  type: QuestionType;
+  prompt: string;
+  options: string[] | null;
+  correct: unknown[] | null;
+  points: number;
+  explanation: string | null;
+  position: number;
+};
+
+export type Quiz = {
+  id: string;
+  courseId: string;
+  moduleId: string | null;
+  lessonId: string | null;
+  title: string;
+  description: string | null;
+  passScore: number;
+  timeLimitMins: number | null;
+  maxAttempts: number | null;
+  shuffleQuestions: boolean;
+  status: QuizStatus;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+  totalQuestions: number;
+  totalPoints: number;
+  questions: Question[];
+};
+
+export type AttemptAnswer = {
+  questionId: string;
+  response: unknown[];
+  pointsAwarded: number;
+  correct: boolean;
+};
+
+export type Attempt = {
+  id: string;
+  quizId: string;
+  userId: string;
+  userEmail: string | null;
+  userName: string | null;
+  startedAt: string;
+  submittedAt: string | null;
+  score: number | null;
+  maxScore: number | null;
+  scorePct: number | null;
+  passed: boolean | null;
+  answers: AttemptAnswer[];
+};
+
+export type QuizCreate = {
+  title: string;
+  description?: string;
+  moduleId?: string;
+  lessonId?: string;
+  passScore?: number;
+  timeLimitMins?: number;
+  maxAttempts?: number;
+  shuffleQuestions?: boolean;
+};
+
+export type QuestionCreate = {
+  type: QuestionType;
+  prompt: string;
+  options?: string[];
+  correct: unknown[];
+  points?: number;
+  explanation?: string;
+};
+
+export type QuizGenerateInput = {
+  lessonId?: string;
+  moduleId?: string;
+  questionCount?: number;
+  types?: QuestionType[];
+  difficulty?: "easy" | "medium" | "hard";
+  providerId?: string;
+  model?: string;
+  maxTokens?: number;
+};
+
+export const Quizzes = {
+  listForCourse: (courseId: string) =>
+    api<Quiz[]>(`/api/v1/courses/${courseId}/quizzes`),
+  get: (id: string) => api<Quiz>(`/api/v1/quizzes/${id}`),
+  create: (courseId: string, input: QuizCreate) =>
+    api<Quiz>(`/api/v1/courses/${courseId}/quizzes`, {
+      method: "POST",
+      body: input,
+    }),
+  update: (
+    id: string,
+    patch: Partial<QuizCreate> & { status?: QuizStatus },
+  ) =>
+    api<Quiz>(`/api/v1/quizzes/${id}`, {
+      method: "PATCH",
+      body: patch,
+    }),
+  delete: (id: string) =>
+    api<void>(`/api/v1/quizzes/${id}`, { method: "DELETE" }),
+  addQuestion: (quizId: string, input: QuestionCreate) =>
+    api<Question>(`/api/v1/quizzes/${quizId}/questions`, {
+      method: "POST",
+      body: input,
+    }),
+  updateQuestion: (id: string, patch: Partial<QuestionCreate>) =>
+    api<Question>(`/api/v1/questions/${id}`, {
+      method: "PATCH",
+      body: patch,
+    }),
+  deleteQuestion: (id: string) =>
+    api<void>(`/api/v1/questions/${id}`, { method: "DELETE" }),
+  generate: (quizId: string, input: QuizGenerateInput) =>
+    api<Quiz>(`/api/v1/quizzes/${quizId}/generate`, {
+      method: "POST",
+      body: input,
+    }),
+  listAttempts: (quizId: string) =>
+    api<Attempt[]>(`/api/v1/quizzes/${quizId}/attempts`),
+  myAttempts: (quizId: string) =>
+    api<Attempt[]>(`/api/v1/me/quizzes/${quizId}/attempts`),
+  startAttempt: (quizId: string) =>
+    api<Attempt>(`/api/v1/quizzes/${quizId}/attempts`, { method: "POST" }),
+  submitAttempt: (attemptId: string, answers: Record<string, unknown[]>) =>
+    api<Attempt>(`/api/v1/attempts/${attemptId}/submit`, {
+      method: "POST",
+      body: { answers },
+    }),
+  getAttempt: (id: string) => api<Attempt>(`/api/v1/attempts/${id}`),
+};

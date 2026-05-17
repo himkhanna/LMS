@@ -25,10 +25,12 @@ import {
   Enrollments,
   Lessons,
   Modules,
+  Quizzes,
   type Course,
   type Enrollment,
   type LessonDto,
   type ModuleDto,
+  type Quiz,
 } from "@/lib/api";
 import { getSession, hasRole } from "@/lib/auth";
 import { AssignDialog } from "@/components/AssignDialog";
@@ -41,12 +43,21 @@ export default function CourseDetailPage() {
   const [busy, setBusy] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [enrollments, setEnrollments] = useState<Enrollment[] | null>(null);
+  const [quizzes, setQuizzes] = useState<Quiz[] | null>(null);
   const canAssign = hasRole("ROLE_ADMIN") || hasRole("ROLE_HR") || hasRole("ROLE_INSTRUCTOR");
 
   async function reloadEnrollments() {
     if (!canAssign) return;
     try {
       setEnrollments(await Enrollments.listForCourse(params.id));
+    } catch {
+      // non-fatal: panel just stays empty
+    }
+  }
+
+  async function reloadQuizzes() {
+    try {
+      setQuizzes(await Quizzes.listForCourse(params.id));
     } catch {
       // non-fatal: panel just stays empty
     }
@@ -68,6 +79,7 @@ export default function CourseDetailPage() {
     }
     reload();
     reloadEnrollments();
+    reloadQuizzes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id, router]);
 
@@ -202,6 +214,13 @@ export default function CourseDetailPage() {
         )}
       </section>
 
+      <QuizzesPanel
+        courseId={course.id}
+        quizzes={quizzes}
+        canAuthor={canAssign}
+        onChange={reloadQuizzes}
+      />
+
       {canAssign ? (
         <EnrollmentsPanel
           enrollments={enrollments}
@@ -217,6 +236,153 @@ export default function CourseDetailPage() {
         onAssigned={() => reloadEnrollments()}
       />
     </div>
+  );
+}
+
+function QuizzesPanel({
+  courseId,
+  quizzes,
+  canAuthor,
+  onChange,
+}: {
+  courseId: string;
+  quizzes: Quiz[] | null;
+  canAuthor: boolean;
+  onChange: () => void;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [title, setTitle] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function createQuiz(e: React.FormEvent) {
+    e.preventDefault();
+    if (!title.trim()) return;
+    setBusy(true);
+    try {
+      const q = await Quizzes.create(courseId, { title: title.trim() });
+      setTitle("");
+      setAdding(false);
+      onChange();
+      window.location.href = `/quizzes/${q.id}/edit`;
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Could not create quiz");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-lg font-medium">Quizzes &amp; assessments</h2>
+        {canAuthor ? (
+          adding ? null : (
+            <button onClick={() => setAdding(true)} className="btn-secondary">
+              + New quiz
+            </button>
+          )
+        ) : null}
+      </div>
+
+      {adding ? (
+        <form
+          onSubmit={createQuiz}
+          className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] p-3"
+        >
+          <input
+            autoFocus
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Quiz title (e.g. Module 1 knowledge check)"
+            className="input flex-1 min-w-[20rem]"
+          />
+          <button type="submit" disabled={busy} className="btn-primary">
+            {busy ? "Creating…" : "Create"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAdding(false);
+              setTitle("");
+            }}
+            className="btn-secondary"
+          >
+            Cancel
+          </button>
+        </form>
+      ) : null}
+
+      {quizzes === null ? (
+        <p className="text-sm text-[var(--muted)]">Loading…</p>
+      ) : quizzes.length === 0 ? (
+        <p className="text-sm text-[var(--muted)]">
+          No quizzes yet.{" "}
+          {canAuthor
+            ? "Create one above or generate questions from a lesson with AI."
+            : "Check back later."}
+        </p>
+      ) : (
+        <div className="table-card">
+          <table className="table-dense">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Questions</th>
+                <th>Pass score</th>
+                <th>Time limit</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {quizzes.map((q) => (
+                <tr key={q.id}>
+                  <td className="font-medium">
+                    <Link
+                      href={canAuthor ? `/quizzes/${q.id}/edit` : `/quizzes/${q.id}/take`}
+                      className="hover:underline"
+                    >
+                      {q.title}
+                    </Link>
+                  </td>
+                  <td>
+                    <span
+                      className={
+                        "chip " +
+                        (q.status === "PUBLISHED"
+                          ? "chip-success"
+                          : q.status === "ARCHIVED"
+                          ? "chip-warn"
+                          : "chip-muted")
+                      }
+                    >
+                      {q.status}
+                    </span>
+                  </td>
+                  <td className="text-xs text-[var(--muted)]">
+                    {q.totalQuestions} · {q.totalPoints} pt
+                  </td>
+                  <td className="text-xs text-[var(--muted)]">{q.passScore}%</td>
+                  <td className="text-xs text-[var(--muted)]">
+                    {q.timeLimitMins ? `${q.timeLimitMins} min` : "—"}
+                  </td>
+                  <td className="text-right">
+                    <Link href={`/quizzes/${q.id}/take`} className="btn-mini">
+                      {q.status === "PUBLISHED" ? "Take" : "Preview"}
+                    </Link>{" "}
+                    {canAuthor ? (
+                      <Link href={`/quizzes/${q.id}/edit`} className="btn-mini">
+                        Edit
+                      </Link>
+                    ) : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 
