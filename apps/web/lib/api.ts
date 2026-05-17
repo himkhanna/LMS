@@ -489,6 +489,8 @@ export type Enrollment = {
   userId: string;
   userEmail: string;
   userName: string | null;
+  managerEmail: string | null;
+  department: string | null;
   status: EnrollmentStatus;
   mandatory: boolean;
   assignedByEmail: string | null;
@@ -500,7 +502,13 @@ export type Enrollment = {
   overdue: boolean;
 };
 
-export type AssignLearner = { userId: string; email: string; displayName?: string | null };
+export type AssignLearner = {
+  userId: string;
+  email: string;
+  displayName?: string | null;
+  managerEmail?: string | null;
+  department?: string | null;
+};
 
 export type AssignResponse = {
   created: number;
@@ -800,3 +808,55 @@ export const Reports = {
     downloadCsv(`/api/v1/reports/overdue.csv`, `overdue.csv`),
   learner: (userId: string) => api<LearnerReport>(`/api/v1/reports/learners/${userId}`),
 };
+
+// ---- Notifications (course-service) ----
+
+export type NotificationChannel = "IN_APP" | "EMAIL";
+
+export type NotificationType =
+  | "DUE_SOON"
+  | "OVERDUE"
+  | "ESCALATION"
+  | "MANUAL"
+  | "COMPLETED";
+
+export type NotificationStatus = "PENDING" | "SENT" | "FAILED" | "READ";
+
+export type AppNotification = {
+  id: string;
+  recipientUserId: string;
+  recipientEmail: string;
+  channel: NotificationChannel;
+  type: NotificationType;
+  subject: string;
+  body: string;
+  enrollmentId: string | null;
+  courseId: string | null;
+  status: NotificationStatus;
+  createdByEmail: string | null;
+  createdAt: string;
+  sentAt: string | null;
+  readAt: string | null;
+};
+
+export const Notifications = {
+  mine: (page = 0, size = 50) =>
+    api<AppNotification[]>(`/api/v1/me/notifications?page=${page}&size=${size}`),
+  unreadCount: () =>
+    api<{ unread: number }>(`/api/v1/me/notifications/unread-count`),
+  markRead: (id: string) =>
+    api<void>(`/api/v1/me/notifications/${id}/read`, { method: "POST" }),
+  markAllRead: () =>
+    api<void>(`/api/v1/me/notifications/read-all`, { method: "POST" }),
+  sendReminder: (
+    enrollmentId: string,
+    input: { channel: NotificationChannel; subject: string; body: string },
+  ) =>
+    api<AppNotification>(`/api/v1/enrollments/${enrollmentId}/reminder`, {
+      method: "POST",
+      body: input,
+    }),
+  runScheduler: () =>
+    api<void>(`/api/v1/admin/notifications/run-reminders`, { method: "POST" }),
+};
+

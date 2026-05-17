@@ -11,5 +11,15 @@ public record AssignRequest(
         OffsetDateTime dueAt,
         Boolean mandatory
 ) {
-    public record Learner(UUID userId, String email, String displayName) {}
+    public record Learner(
+            UUID userId,
+            String email,
+            String displayName,
+            String managerEmail,
+            String department
+    ) {
+        public Learner(UUID userId, String email, String displayName) {
+            this(userId, email, displayName, null, null);
+        }
+    }
 }

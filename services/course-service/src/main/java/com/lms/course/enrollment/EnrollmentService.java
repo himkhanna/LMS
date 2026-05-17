@@ -67,6 +67,8 @@ public class EnrollmentService {
             }
             // refresh on every assign so HR can re-send with new due date / mandatory flag
             e.setUserName(l.displayName());
+            e.setManagerEmail(l.managerEmail());
+            e.setDepartment(l.department());
             e.setMandatory(mandatory);
             e.setAssignedByEmail(assignedByEmail);
             if (req.dueAt() != null) e.setDueAt(req.dueAt());

@@ -77,6 +77,8 @@ export function AssignDialog({ courseId, courseTitle, open, onClose, onAssigned 
           userId: u.id,
           email: u.email,
           displayName: u.displayName,
+          managerEmail: u.managerEmail,
+          department: u.department,
         })),
         dueAt: dueAt ? new Date(dueAt).toISOString() : null,
         mandatory,

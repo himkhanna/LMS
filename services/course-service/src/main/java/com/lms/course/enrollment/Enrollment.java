@@ -29,6 +29,12 @@ public class Enrollment {
     @Column(name = "user_name")
     private String userName;
 
+    @Column(name = "manager_email")
+    private String managerEmail;
+
+    @Column(name = "department", length = 128)
+    private String department;
+
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 32)
     private EnrollmentStatus status = EnrollmentStatus.ASSIGNED;
 
@@ -74,6 +80,14 @@ public class Enrollment {
     }
     public String getUserName() { return userName; }
     public void setUserName(String userName) { this.userName = userName; }
+    public String getManagerEmail() { return managerEmail; }
+    public void setManagerEmail(String v) {
+        this.managerEmail = v == null || v.isBlank() ? null : v.trim().toLowerCase();
+    }
+    public String getDepartment() { return department; }
+    public void setDepartment(String v) {
+        this.department = v == null || v.isBlank() ? null : v.trim();
+    }
     public EnrollmentStatus getStatus() { return status; }
     public void setStatus(EnrollmentStatus status) { this.status = status; }
     public boolean isMandatory() { return mandatory; }

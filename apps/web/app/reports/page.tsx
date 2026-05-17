@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Reports, type CourseReport, type OrgOverview } from "@/lib/api";
+import { Notifications, Reports, type CourseReport, type OrgOverview } from "@/lib/api";
 import { getSession, hasRole } from "@/lib/auth";
 
 export default function ReportsHomePage() {
@@ -12,6 +12,21 @@ export default function ReportsHomePage() {
   const [courses, setCourses] = useState<CourseReport[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
+  const [runningReminders, setRunningReminders] = useState(false);
+  const [reminderFeedback, setReminderFeedback] = useState<string | null>(null);
+
+  async function runReminders() {
+    setRunningReminders(true);
+    setReminderFeedback(null);
+    try {
+      await Notifications.runScheduler();
+      setReminderFeedback("Reminder workflow ran. Affected learners now have inbox messages.");
+    } catch (e) {
+      setReminderFeedback(e instanceof Error ? e.message : "Failed to run reminders");
+    } finally {
+      setRunningReminders(false);
+    }
+  }
 
   useEffect(() => {
     if (!getSession()) {
@@ -44,6 +59,14 @@ export default function ReportsHomePage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={runReminders}
+            disabled={runningReminders}
+            className="rounded border border-[var(--border)] bg-[var(--panel)] px-3 py-1.5 text-sm hover:bg-[var(--panel-2)] disabled:opacity-50"
+            title="Manually trigger the daily reminder workflow"
+          >
+            {runningReminders ? "Running…" : "Run reminders now"}
+          </button>
           <Link
             href="/reports/overdue"
             className="rounded border border-[var(--border)] bg-[var(--panel)] px-3 py-1.5 text-sm hover:bg-[var(--panel-2)]"
@@ -57,6 +80,11 @@ export default function ReportsHomePage() {
           </Link>
         </div>
       </div>
+      {reminderFeedback ? (
+        <div className="rounded-md border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-800">
+          {reminderFeedback}
+        </div>
+      ) : null}
 
       {err ? <p className="text-sm text-[var(--danger)]">{err}</p> : null}
 

@@ -4,6 +4,7 @@ import Image from "next/image";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { SessionMenu } from "@/components/SessionMenu";
+import { InboxBell } from "@/components/InboxBell";
 
 export const metadata: Metadata = {
   title: "IDC Digital — Learning Platform",
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Link href="/admin/users" className="hover:text-[var(--header-accent)]">
                 Admin
               </Link>
+              <InboxBell />
               <SessionMenu />
             </nav>
           </div>

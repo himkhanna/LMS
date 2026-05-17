@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Reports, type Enrollment } from "@/lib/api";
+import { Notifications, Reports, type Enrollment } from "@/lib/api";
 import { getSession, hasRole } from "@/lib/auth";
 
 export default function OverduePage() {
@@ -171,6 +171,8 @@ export default function OverduePage() {
                       {e.mandatory ? <span className="chip chip-warn">YES</span> : "—"}
                     </td>
                     <td className="text-right">
+                      <ReminderButton e={e} />
+                      {" "}
                       <Link href={`/reports/learners/${e.userId}`} className="btn-mini">
                         View
                       </Link>
@@ -183,5 +185,48 @@ export default function OverduePage() {
         </div>
       )}
     </div>
+  );
+}
+
+function ReminderButton({ e }: { e: Enrollment }) {
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  async function send() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const days = e.dueAt
+        ? Math.max(
+            0,
+            Math.floor((Date.now() - new Date(e.dueAt).getTime()) / 86_400_000),
+          )
+        : 0;
+      await Notifications.sendReminder(e.id, {
+        channel: "IN_APP",
+        subject: `Reminder: complete "${e.courseTitle}"`,
+        body:
+          `Hi ${e.userName ?? e.userEmail},\n\n` +
+          `Your course "${e.courseTitle}" is ${days} day${days === 1 ? "" : "s"} overdue` +
+          (e.mandatory ? " (mandatory training)" : "") +
+          `.\nPlease complete it as soon as possible.`,
+      });
+      setSent(true);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Reminder failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (sent) {
+    return (
+      <span className="text-xs font-medium text-[var(--success)]">✓ Sent</span>
+    );
+  }
+  return (
+    <button onClick={send} disabled={busy} className="btn-mini">
+      {busy ? "Sending…" : "Send reminder"}
+    </button>
   );
 }
