@@ -21,7 +21,7 @@ services:
     image: postgres:16-alpine
     container_name: lms-course-db
     environment: { POSTGRES_DB: course, POSTGRES_USER: course, POSTGRES_PASSWORD: course }
-    ports: ["5432:5432"]
+    ports: ["5532:5432"]
     volumes: [course_pg:/var/lib/postgresql/data]
     healthcheck: *pg-health
 
@@ -29,7 +29,7 @@ services:
     image: postgres:16-alpine
     container_name: lms-ai-gateway-db
     environment: { POSTGRES_DB: ai_gateway, POSTGRES_USER: ai, POSTGRES_PASSWORD: ai }
-    ports: ["5433:5432"]
+    ports: ["5533:5432"]
     volumes: [ai_gateway_pg:/var/lib/postgresql/data]
     healthcheck: *pg-health
 
@@ -37,7 +37,7 @@ services:
     image: postgres:16-alpine
     container_name: lms-auth-db
     environment: { POSTGRES_DB: auth, POSTGRES_USER: auth, POSTGRES_PASSWORD: auth }
-    ports: ["5434:5432"]
+    ports: ["5534:5432"]
     volumes: [auth_pg:/var/lib/postgresql/data]
     healthcheck: *pg-health
 

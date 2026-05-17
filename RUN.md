@@ -24,7 +24,7 @@ Wipe data (clean slate): `docker compose down -v`.
 | `auth-service` | 8083 | Issues JWTs; admin/user CRUD |
 | `course-service` | 8081 | Courses, modules, lessons, assets, AI generate |
 | `ai-gateway-service` | 8082 | AI provider abstraction (OpenAI / Anthropic / Azure / Ollama) |
-| 3 × Postgres | 5432, 5433, 5434 | One DB per service |
+| 3 × Postgres | 5532, 5533, 5534 | One DB per service (off-default to avoid clashing with a local Postgres install) |
 
 The other 9 scaffolded services (user, ai-orchestration, assessment, notification, analytics, workflow, reporting, search) aren't in this compose — they're independent and not needed for the test flow.
 
