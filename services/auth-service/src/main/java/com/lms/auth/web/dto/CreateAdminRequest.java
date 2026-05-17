@@ -9,5 +9,7 @@ public record CreateAdminRequest(
         @Email @NotBlank String email,
         @NotBlank @Size(min = 8, max = 255) String password,
         @NotBlank String displayName,
-        AppUser.Role role
+        AppUser.Role role,
+        String managerEmail,
+        String department
 ) {}

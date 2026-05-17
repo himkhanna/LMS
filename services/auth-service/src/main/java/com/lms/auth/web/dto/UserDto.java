@@ -6,9 +6,12 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public record UserDto(UUID id, String email, String displayName, String role, String status,
+                      String managerEmail, String department,
                       OffsetDateTime createdAt) {
     public static UserDto from(AppUser u) {
         return new UserDto(u.getId(), u.getEmail(), u.getDisplayName(),
-                u.getRole().name(), u.getStatus().name(), u.getCreatedAt());
+                u.getRole().name(), u.getStatus().name(),
+                u.getManagerEmail(), u.getDepartment(),
+                u.getCreatedAt());
     }
 }

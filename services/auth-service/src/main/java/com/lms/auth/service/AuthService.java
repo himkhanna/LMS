@@ -87,6 +87,12 @@ public class AuthService {
         u.setPasswordHash(encoder.encode(req.password()));
         u.setRole(req.role() != null ? req.role() : AppUser.Role.ADMIN);
         u.setStatus(AppUser.Status.ACTIVE);
+        if (req.managerEmail() != null && !req.managerEmail().isBlank()) {
+            u.setManagerEmail(req.managerEmail());
+        }
+        if (req.department() != null && !req.department().isBlank()) {
+            u.setDepartment(req.department().trim());
+        }
         return users.save(u);
     }
 
@@ -95,6 +101,12 @@ public class AuthService {
         if (req.displayName() != null) u.setDisplayName(req.displayName());
         if (req.role() != null) u.setRole(req.role());
         if (req.status() != null) u.setStatus(req.status());
+        if (req.managerEmail() != null) {
+            u.setManagerEmail(req.managerEmail().isBlank() ? null : req.managerEmail());
+        }
+        if (req.department() != null) {
+            u.setDepartment(req.department().isBlank() ? null : req.department().trim());
+        }
         return u;
     }
 

@@ -10,7 +10,7 @@ import java.util.UUID;
 @Table(name = "app_user")
 public class AppUser {
 
-    public enum Role { USER, ADMIN, INSTRUCTOR }
+    public enum Role { USER, ADMIN, INSTRUCTOR, HR }
     public enum Status { ACTIVE, DISABLED }
 
     @Id @UuidGenerator
@@ -29,6 +29,10 @@ public class AppUser {
     private Role role = Role.USER;
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 32)
     private Status status = Status.ACTIVE;
+    @Column(name = "manager_email")
+    private String managerEmail;
+    @Column(name = "department", length = 128)
+    private String department;
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
     @Column(name = "updated_at", nullable = false)
@@ -45,6 +49,9 @@ public class AppUser {
     public String getTenantId() { return tenantId; } public void setTenantId(String v) { this.tenantId = v; }
     public Role getRole() { return role; } public void setRole(Role v) { this.role = v; }
     public Status getStatus() { return status; } public void setStatus(Status v) { this.status = v; }
+    public String getManagerEmail() { return managerEmail; }
+    public void setManagerEmail(String v) { this.managerEmail = v == null ? null : v.trim().toLowerCase(); }
+    public String getDepartment() { return department; } public void setDepartment(String v) { this.department = v; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
 }
