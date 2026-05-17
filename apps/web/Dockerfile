@@ -5,6 +5,23 @@ RUN npm install --no-audit --no-fund --legacy-peer-deps
 
 FROM node:22-alpine AS build
 WORKDIR /app
+
+# Public, non-secret values that Next.js must inline into the client
+# bundle at build time. They're surfaced as NEXT_PUBLIC_* env vars during
+# `next build` so they end up in the static JS the browser loads.
+ARG NEXT_PUBLIC_MS_TENANT_ID=common
+ARG NEXT_PUBLIC_MS_CLIENT_ID=
+ARG NEXT_PUBLIC_MS_REDIRECT_URI=http://localhost:3000/auth/callback
+ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:8081
+ARG NEXT_PUBLIC_AUTH_BASE_URL=http://localhost:8083
+ARG NEXT_PUBLIC_AI_GATEWAY_URL=http://localhost:8082
+ENV NEXT_PUBLIC_MS_TENANT_ID=$NEXT_PUBLIC_MS_TENANT_ID
+ENV NEXT_PUBLIC_MS_CLIENT_ID=$NEXT_PUBLIC_MS_CLIENT_ID
+ENV NEXT_PUBLIC_MS_REDIRECT_URI=$NEXT_PUBLIC_MS_REDIRECT_URI
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+ENV NEXT_PUBLIC_AUTH_BASE_URL=$NEXT_PUBLIC_AUTH_BASE_URL
+ENV NEXT_PUBLIC_AI_GATEWAY_URL=$NEXT_PUBLIC_AI_GATEWAY_URL
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1

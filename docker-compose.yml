@@ -108,7 +108,18 @@ services:
 
   # ---- Frontend ----
   web:
-    build: ./apps/web
+    build:
+      context: ./apps/web
+      args:
+        # NEXT_PUBLIC_* must be passed at build time — Next inlines them
+        # into the client bundle. Read from the same MS_* values used by
+        # the backend so you only configure them once in your .env.
+        NEXT_PUBLIC_MS_TENANT_ID: ${MS_TENANT_ID:-common}
+        NEXT_PUBLIC_MS_CLIENT_ID: ${MS_CLIENT_ID:-}
+        NEXT_PUBLIC_MS_REDIRECT_URI: ${MS_REDIRECT_URI:-http://localhost:3000/auth/callback}
+        NEXT_PUBLIC_API_BASE_URL: ${API_BASE_URL:-http://localhost:8081}
+        NEXT_PUBLIC_AUTH_BASE_URL: ${AUTH_BASE_URL:-http://localhost:8083}
+        NEXT_PUBLIC_AI_GATEWAY_URL: ${AI_GATEWAY_URL_PUBLIC:-http://localhost:8082}
     container_name: lms-web
     depends_on:
       - auth-service
