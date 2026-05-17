@@ -243,8 +243,18 @@ export const Modules = {
       method: "POST",
       body: { title },
     }),
+  update: (moduleId: string, patch: { title?: string }) =>
+    api<ModuleDto>(`/api/v1/modules/${moduleId}`, {
+      method: "PATCH",
+      body: patch,
+    }),
   delete: (moduleId: string) =>
     api<void>(`/api/v1/modules/${moduleId}`, { method: "DELETE" }),
+  reorder: (courseId: string, ids: string[]) =>
+    api<void>(`/api/v1/courses/${courseId}/modules/order`, {
+      method: "PATCH",
+      body: { ids },
+    }),
 };
 
 export const Lessons = {
@@ -254,8 +264,35 @@ export const Lessons = {
       method: "POST",
       body: input,
     }),
+  update: (id: string, patch: { title?: string; content?: string; durationSecs?: number }) =>
+    api<LessonDto>(`/api/v1/lessons/${id}`, {
+      method: "PATCH",
+      body: patch,
+    }),
   delete: (id: string) =>
     api<void>(`/api/v1/lessons/${id}`, { method: "DELETE" }),
+  reorder: (moduleId: string, ids: string[]) =>
+    api<void>(`/api/v1/modules/${moduleId}/lessons/order`, {
+      method: "PATCH",
+      body: { ids },
+    }),
+};
+
+export type CourseTemplateSummary = {
+  id: string;
+  name: string;
+  description: string;
+  moduleCount: number;
+  lessonCount: number;
+};
+
+export const Templates = {
+  list: () => api<CourseTemplateSummary[]>(`/api/v1/course-templates`),
+  createCourse: (input: { templateId: string; title?: string }) =>
+    api<Course>(`/api/v1/courses/from-template`, {
+      method: "POST",
+      body: input,
+    }),
 };
 
 export const Assets = {
@@ -375,7 +412,35 @@ export type GenerateCourseInput = {
   maxTokens?: number;
 };
 
+export type GenerateCourseFromFileInput = {
+  file: File;
+  mode?: "ai" | "mechanical";
+  topic?: string;
+  audience?: string;
+  moduleCount?: number;
+  lessonsPerModule?: number;
+  providerId?: string;
+  model?: string;
+  maxTokens?: number;
+};
+
 export const AiCourses = {
   generate: (input: GenerateCourseInput) =>
     api<Course>(`/api/v1/courses/generate`, { method: "POST", body: input }),
+  generateFromFile: (input: GenerateCourseFromFileInput) => {
+    const fd = new FormData();
+    fd.append("file", input.file);
+    if (input.mode) fd.append("mode", input.mode);
+    if (input.topic) fd.append("topic", input.topic);
+    if (input.audience) fd.append("audience", input.audience);
+    if (input.moduleCount != null) fd.append("moduleCount", String(input.moduleCount));
+    if (input.lessonsPerModule != null) fd.append("lessonsPerModule", String(input.lessonsPerModule));
+    if (input.providerId) fd.append("providerId", input.providerId);
+    if (input.model) fd.append("model", input.model);
+    if (input.maxTokens != null) fd.append("maxTokens", String(input.maxTokens));
+    return api<Course>(`/api/v1/courses/generate-from-file`, {
+      method: "POST",
+      body: fd,
+    });
+  },
 };
