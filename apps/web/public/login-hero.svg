@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" role="img" aria-label="People learning together">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0a1e44"/>
+      <stop offset="100%" stop-color="#173a86"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2bb6ff"/>
+      <stop offset="100%" stop-color="#1e63f2"/>
+    </linearGradient>
+    <linearGradient id="warm" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffd66b"/>
+      <stop offset="100%" stop-color="#ffb01f"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="600" height="600" fill="url(#sky)"/>
+  <circle cx="180" cy="160" r="260" fill="url(#glow)"/>
+  <circle cx="470" cy="480" r="220" fill="url(#glow)"/>
+
+  <!-- Floating soft shapes -->
+  <circle cx="90" cy="80" r="6" fill="#2bb6ff" opacity="0.6"/>
+  <circle cx="520" cy="120" r="4" fill="#ffd66b" opacity="0.7"/>
+  <circle cx="540" cy="320" r="5" fill="#ffffff" opacity="0.45"/>
+  <circle cx="70" cy="430" r="7" fill="#2bb6ff" opacity="0.55"/>
+  <circle cx="320" cy="60" r="3" fill="#ffffff" opacity="0.5"/>
+
+  <!-- Tablet / device frame in center -->
+  <g transform="translate(150 180)">
+    <rect x="0" y="0" width="300" height="220" rx="16" fill="#ffffff"/>
+    <rect x="0" y="0" width="300" height="34" rx="16" fill="url(#accent)"/>
+    <rect x="0" y="22" width="300" height="14" fill="url(#accent)"/>
+    <circle cx="18" cy="17" r="4" fill="#ffffff" opacity="0.9"/>
+    <circle cx="32" cy="17" r="4" fill="#ffffff" opacity="0.7"/>
+    <circle cx="46" cy="17" r="4" fill="#ffffff" opacity="0.5"/>
+
+    <!-- Course rows -->
+    <rect x="20" y="54" width="120" height="10" rx="3" fill="#0f1f3d"/>
+    <rect x="20" y="72" width="200" height="6" rx="3" fill="#5b6b86" opacity="0.5"/>
+
+    <rect x="20" y="96" width="120" height="46" rx="6" fill="#e3edff"/>
+    <rect x="30" y="106" width="60" height="6" rx="2" fill="#1e63f2"/>
+    <rect x="30" y="118" width="90" height="4" rx="2" fill="#1e63f2" opacity="0.6"/>
+    <rect x="30" y="128" width="70" height="4" rx="2" fill="#1e63f2" opacity="0.4"/>
+
+    <rect x="150" y="96" width="120" height="46" rx="6" fill="#fff4d6"/>
+    <rect x="160" y="106" width="60" height="6" rx="2" fill="#b45309"/>
+    <rect x="160" y="118" width="90" height="4" rx="2" fill="#b45309" opacity="0.6"/>
+    <rect x="160" y="128" width="70" height="4" rx="2" fill="#b45309" opacity="0.4"/>
+
+    <!-- Progress bar -->
+    <rect x="20" y="160" width="260" height="8" rx="4" fill="#d9dfeb"/>
+    <rect x="20" y="160" width="180" height="8" rx="4" fill="url(#accent)"/>
+    <rect x="20" y="180" width="80" height="6" rx="3" fill="#0f1f3d" opacity="0.7"/>
+    <rect x="220" y="180" width="60" height="6" rx="3" fill="#047857"/>
+  </g>
+
+  <!-- Floating badge / certificate -->
+  <g transform="translate(70 380)">
+    <rect x="0" y="0" width="130" height="90" rx="10" fill="#ffffff"/>
+    <circle cx="28" cy="44" r="18" fill="url(#warm)"/>
+    <path d="M22 44 l5 5 l9 -10" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="56" y="32" width="60" height="6" rx="3" fill="#0f1f3d"/>
+    <rect x="56" y="44" width="70" height="4" rx="2" fill="#5b6b86" opacity="0.7"/>
+    <rect x="56" y="54" width="50" height="4" rx="2" fill="#5b6b86" opacity="0.5"/>
+  </g>
+
+  <!-- Floating chat bubble -->
+  <g transform="translate(410 100)">
+    <rect x="0" y="0" width="130" height="74" rx="14" fill="#ffffff"/>
+    <path d="M22 74 l-6 14 l24 -14 z" fill="#ffffff"/>
+    <circle cx="22" cy="22" r="10" fill="url(#accent)"/>
+    <rect x="40" y="16" width="70" height="6" rx="3" fill="#0f1f3d"/>
+    <rect x="40" y="28" width="80" height="4" rx="2" fill="#5b6b86" opacity="0.6"/>
+    <rect x="14" y="46" width="100" height="4" rx="2" fill="#5b6b86" opacity="0.4"/>
+    <rect x="14" y="56" width="80" height="4" rx="2" fill="#5b6b86" opacity="0.4"/>
+  </g>
+
+  <!-- Floating stats card -->
+  <g transform="translate(420 380)">
+    <rect x="0" y="0" width="140" height="100" rx="12" fill="#ffffff"/>
+    <rect x="14" y="14" width="60" height="6" rx="3" fill="#0f1f3d"/>
+    <rect x="14" y="26" width="40" height="4" rx="2" fill="#5b6b86" opacity="0.6"/>
+    <!-- Bars -->
+    <rect x="14" y="48" width="14" height="38" rx="3" fill="#e3edff"/>
+    <rect x="14" y="60" width="14" height="26" rx="3" fill="url(#accent)"/>
+    <rect x="34" y="48" width="14" height="38" rx="3" fill="#e3edff"/>
+    <rect x="34" y="54" width="14" height="32" rx="3" fill="url(#accent)"/>
+    <rect x="54" y="48" width="14" height="38" rx="3" fill="#e3edff"/>
+    <rect x="54" y="50" width="14" height="36" rx="3" fill="url(#accent)"/>
+    <rect x="74" y="48" width="14" height="38" rx="3" fill="#e3edff"/>
+    <rect x="74" y="58" width="14" height="28" rx="3" fill="url(#accent)"/>
+    <rect x="94" y="48" width="14" height="38" rx="3" fill="#e3edff"/>
+    <rect x="94" y="48" width="14" height="38" rx="3" fill="url(#accent)"/>
+    <rect x="114" y="48" width="14" height="38" rx="3" fill="#e3edff"/>
+    <rect x="114" y="56" width="14" height="30" rx="3" fill="url(#accent)"/>
+  </g>
+</svg>
