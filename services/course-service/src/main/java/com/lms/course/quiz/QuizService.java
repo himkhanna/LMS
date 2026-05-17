@@ -340,4 +340,51 @@ public class QuizService {
     public ArrayList<Question> emptyQuestionList() {
         return new ArrayList<>();
     }
+
+    // ---- Per-question analytics for HR/instructor review ----
+
+    @Transactional(readOnly = true)
+    public java.util.List<QuestionAnalytics> analytics(UUID quizId) {
+        Quiz quiz = get(quizId);
+        java.util.List<Attempt> submitted = attempts.findByQuizIdOrderByStartedAtDesc(quizId).stream()
+                .filter(a -> a.getSubmittedAt() != null)
+                .toList();
+
+        java.util.Map<UUID, java.util.List<AttemptAnswer>> answersByQuestion = new java.util.HashMap<>();
+        for (Attempt a : submitted) {
+            for (AttemptAnswer ans : a.getAnswers()) {
+                answersByQuestion.computeIfAbsent(ans.getQuestionId(), k -> new java.util.ArrayList<>()).add(ans);
+            }
+        }
+
+        java.util.List<QuestionAnalytics> out = new java.util.ArrayList<>();
+        for (Question q : quiz.getQuestions()) {
+            java.util.List<AttemptAnswer> answers = answersByQuestion.getOrDefault(q.getId(), java.util.List.of());
+            int total = answers.size();
+            int correct = (int) answers.stream().filter(AttemptAnswer::isCorrect).count();
+            double pct = total == 0 ? 0.0 : Math.round((correct * 1000.0) / total) / 10.0;
+
+            java.util.List<Integer> pickCounts = null;
+            if ((q.getType() == QuestionType.MCQ_SINGLE || q.getType() == QuestionType.MCQ_MULTI)
+                    && q.getOptions() != null) {
+                int[] counts = new int[q.getOptions().size()];
+                for (AttemptAnswer ans : answers) {
+                    if (ans.getResponse() == null) continue;
+                    for (Object pick : ans.getResponse()) {
+                        if (pick instanceof Number n) {
+                            int idx = n.intValue();
+                            if (idx >= 0 && idx < counts.length) counts[idx]++;
+                        }
+                    }
+                }
+                pickCounts = new java.util.ArrayList<>(counts.length);
+                for (int c : counts) pickCounts.add(c);
+            }
+
+            out.add(new QuestionAnalytics(
+                    q.getId(), q.getType(), q.getPrompt(), q.getPosition(),
+                    total, correct, pct, pickCounts));
+        }
+        return out;
+    }
 }

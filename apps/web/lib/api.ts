@@ -723,6 +723,19 @@ export const Quizzes = {
       body: { answers },
     }),
   getAttempt: (id: string) => api<Attempt>(`/api/v1/attempts/${id}`),
+  analytics: (quizId: string) =>
+    api<QuestionAnalytics[]>(`/api/v1/quizzes/${quizId}/analytics`),
+};
+
+export type QuestionAnalytics = {
+  questionId: string;
+  type: QuestionType;
+  prompt: string;
+  position: number;
+  totalResponses: number;
+  correctResponses: number;
+  correctPct: number;
+  optionPickCounts: number[] | null;
 };
 
 // ---- Reports (course-service, HR/admin only) ----

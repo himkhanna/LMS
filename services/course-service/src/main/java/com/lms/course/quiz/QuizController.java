@@ -97,6 +97,12 @@ public class QuizController {
                 .toList();
     }
 
+    @GetMapping("/quizzes/{id}/analytics")
+    @PreAuthorize("hasAnyRole('ADMIN','HR','INSTRUCTOR')")
+    public List<QuestionAnalytics> analytics(@PathVariable UUID id) {
+        return service.analytics(id);
+    }
+
     // ---- Learner taking the quiz ----
 
     @PostMapping("/quizzes/{id}/attempts")

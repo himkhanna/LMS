@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import {
   Quizzes,
   type Question,
+  type QuestionAnalytics,
   type QuestionType,
   type Quiz,
   type QuizCreate,
@@ -179,6 +180,147 @@ export default function QuizEditPage() {
           </ol>
         )}
       </section>
+
+      <AnalyticsPanel quizId={quiz.id} />
+    </div>
+  );
+}
+
+function AnalyticsPanel({ quizId }: { quizId: string }) {
+  const [items, setItems] = useState<QuestionAnalytics[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (loaded) return;
+    Quizzes.analytics(quizId)
+      .then((r) => {
+        setItems(r);
+        setLoaded(true);
+      })
+      .catch((e) => setErr(e instanceof Error ? e.message : "Failed to load analytics"));
+  }, [quizId, loaded]);
+
+  if (err) {
+    return <p className="text-sm text-[var(--danger)]">{err}</p>;
+  }
+  if (items === null) {
+    return <p className="text-sm text-[var(--muted)]">Loading question analytics…</p>;
+  }
+  const responded = items.filter((q) => q.totalResponses > 0);
+  if (responded.length === 0) {
+    return (
+      <section className="space-y-3">
+        <h2 className="text-lg font-medium">Question analytics</h2>
+        <p className="text-sm text-[var(--muted)]">
+          No attempts submitted yet. Stats appear once learners take this quiz.
+        </p>
+      </section>
+    );
+  }
+
+  const sorted = [...responded].sort((a, b) => a.correctPct - b.correctPct);
+  const hardest = sorted.slice(0, 3);
+  const easiest = sorted.slice(-3).reverse();
+
+  return (
+    <section className="space-y-3">
+      <h2 className="text-lg font-medium">Question analytics</h2>
+      <p className="text-xs text-[var(--muted)]">
+        Across {Math.max(...items.map((q) => q.totalResponses))} attempt
+        {Math.max(...items.map((q) => q.totalResponses)) === 1 ? "" : "s"}.
+      </p>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <SummaryCard title="Hardest questions" subtitle="Lowest correct rate" items={hardest} tone="warn" />
+        <SummaryCard title="Easiest questions" subtitle="Highest correct rate" items={easiest} tone="success" />
+      </div>
+
+      <div className="table-card">
+        <table className="table-dense">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Question</th>
+              <th>Responses</th>
+              <th>Correct</th>
+              <th>Distribution</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((q) => (
+              <tr key={q.questionId}>
+                <td className="tabular-nums text-xs text-[var(--muted)]">Q{q.position + 1}</td>
+                <td>
+                  <div className="line-clamp-2 max-w-md text-sm">{q.prompt}</div>
+                  <div className="text-xs text-[var(--muted)]">{q.type}</div>
+                </td>
+                <td className="tabular-nums">{q.totalResponses}</td>
+                <td>
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-20 overflow-hidden rounded-full bg-[var(--border)]">
+                      <div
+                        className={
+                          "h-full " +
+                          (q.correctPct >= 80
+                            ? "bg-emerald-500"
+                            : q.correctPct >= 50
+                            ? "bg-amber-500"
+                            : "bg-red-500")
+                        }
+                        style={{ width: `${Math.max(2, q.correctPct)}%` }}
+                      />
+                    </div>
+                    <span className="w-12 text-right text-xs tabular-nums">{q.correctPct}%</span>
+                  </div>
+                </td>
+                <td className="text-xs text-[var(--muted)]">
+                  {q.optionPickCounts ? (
+                    <div className="flex flex-wrap gap-1">
+                      {q.optionPickCounts.map((c, i) => (
+                        <span key={i} className="rounded bg-[var(--panel-2)] px-1.5 py-0.5">
+                          {String.fromCharCode(65 + i)}: {c}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function SummaryCard({
+  title,
+  subtitle,
+  items,
+  tone,
+}: {
+  title: string;
+  subtitle: string;
+  items: QuestionAnalytics[];
+  tone: "warn" | "success";
+}) {
+  const border = tone === "warn" ? "border-red-200 bg-red-50/40" : "border-emerald-200 bg-emerald-50/40";
+  return (
+    <div className={`rounded-lg border ${border} p-4 shadow-sm`}>
+      <div className="text-sm font-semibold">{title}</div>
+      <div className="text-xs text-[var(--muted)]">{subtitle}</div>
+      <ol className="mt-2 space-y-1">
+        {items.map((q) => (
+          <li key={q.questionId} className="flex items-start gap-2 text-xs">
+            <span className="shrink-0 font-mono text-[var(--muted)]">Q{q.position + 1}</span>
+            <span className="flex-1 truncate">{q.prompt}</span>
+            <span className="shrink-0 tabular-nums">{q.correctPct}%</span>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
