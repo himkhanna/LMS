@@ -7,10 +7,15 @@ import com.lms.course.web.dto.LessonDto;
 import com.lms.course.web.dto.ModuleDto;
 import com.lms.course.web.dto.UpdateLessonRequest;
 import com.lms.course.web.dto.UpdateModuleRequest;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -20,6 +25,9 @@ public class LessonController {
 
     private final LessonRepository lessons;
     private final CourseModuleRepository modules;
+
+    @PersistenceContext
+    private EntityManager em;
 
     public LessonController(LessonRepository lessons, CourseModuleRepository modules) {
         this.lessons = lessons;
@@ -64,4 +72,61 @@ public class LessonController {
         modules.deleteById(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PatchMapping("/courses/{courseId}/modules/order")
+    public ResponseEntity<Void> reorderModules(@PathVariable UUID courseId,
+                                               @RequestBody ReorderRequest req) {
+        if (req == null || req.ids() == null || req.ids().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        var found = modules.findAllById(req.ids());
+        if (found.size() != req.ids().size()) {
+            throw new CourseNotFoundException("Module", req.ids().get(0));
+        }
+        Map<UUID, com.lms.course.domain.CourseModule> byId = new HashMap<>();
+        for (var m : found) {
+            if (!m.getCourse().getId().equals(courseId)) {
+                throw new IllegalArgumentException("Module " + m.getId() + " is not in course " + courseId);
+            }
+            byId.put(m.getId(), m);
+        }
+        // Two-pass to avoid violating the (course_id, position) unique constraint mid-flush.
+        for (int i = 0; i < req.ids().size(); i++) {
+            byId.get(req.ids().get(i)).setPosition(-(i + 1));
+        }
+        em.flush();
+        for (int i = 0; i < req.ids().size(); i++) {
+            byId.get(req.ids().get(i)).setPosition(i);
+        }
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/modules/{moduleId}/lessons/order")
+    public ResponseEntity<Void> reorderLessons(@PathVariable UUID moduleId,
+                                               @RequestBody ReorderRequest req) {
+        if (req == null || req.ids() == null || req.ids().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        var found = lessons.findAllById(req.ids());
+        if (found.size() != req.ids().size()) {
+            throw new CourseNotFoundException("Lesson", req.ids().get(0));
+        }
+        Map<UUID, com.lms.course.domain.Lesson> byId = new HashMap<>();
+        for (var l : found) {
+            if (!l.getModule().getId().equals(moduleId)) {
+                throw new IllegalArgumentException("Lesson " + l.getId() + " is not in module " + moduleId);
+            }
+            byId.put(l.getId(), l);
+        }
+        for (int i = 0; i < req.ids().size(); i++) {
+            byId.get(req.ids().get(i)).setPosition(-(i + 1));
+        }
+        em.flush();
+        for (int i = 0; i < req.ids().size(); i++) {
+            byId.get(req.ids().get(i)).setPosition(i);
+        }
+        return ResponseEntity.noContent().build();
+    }
+
+    public record ReorderRequest(List<UUID> ids) {}
 }

@@ -250,6 +250,11 @@ export const Modules = {
     }),
   delete: (moduleId: string) =>
     api<void>(`/api/v1/modules/${moduleId}`, { method: "DELETE" }),
+  reorder: (courseId: string, ids: string[]) =>
+    api<void>(`/api/v1/courses/${courseId}/modules/order`, {
+      method: "PATCH",
+      body: { ids },
+    }),
 };
 
 export const Lessons = {
@@ -266,6 +271,11 @@ export const Lessons = {
     }),
   delete: (id: string) =>
     api<void>(`/api/v1/lessons/${id}`, { method: "DELETE" }),
+  reorder: (moduleId: string, ids: string[]) =>
+    api<void>(`/api/v1/modules/${moduleId}/lessons/order`, {
+      method: "PATCH",
+      body: { ids },
+    }),
 };
 
 export const Assets = {
