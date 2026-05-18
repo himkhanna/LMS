@@ -236,7 +236,7 @@ function StatTile({
   );
 }
 
-export function CompletionBar({
+function CompletionBar({
   completed,
   total,
 }: {
