@@ -325,6 +325,110 @@ export const Catalog = {
     api<Enrollment>(`/api/v1/courses/${courseId}/enroll-me`, { method: "POST" }),
 };
 
+// ---- Learning paths ----
+
+export type LearningPathStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
+
+export type PathCourseDto = {
+  linkId: string;
+  courseId: string;
+  courseTitle: string;
+  courseStatus: string;
+  courseSummary: string | null;
+  position: number;
+  required: boolean;
+};
+
+export type LearningPath = {
+  id: string;
+  title: string;
+  description: string | null;
+  summary: string | null;
+  coverColor: string | null;
+  tags: string[];
+  status: LearningPathStatus;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt: string | null;
+  courseCount: number;
+  courses: PathCourseDto[];
+};
+
+export type PathAssignment = {
+  id: string;
+  pathId: string;
+  pathTitle: string;
+  pathCoverColor: string | null;
+  userId: string;
+  userEmail: string;
+  userName: string | null;
+  status: EnrollmentStatus;
+  mandatory: boolean;
+  assignedAt: string;
+  dueAt: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  progressPct: number;
+  overdue: boolean;
+};
+
+export const LearningPaths = {
+  list: () => api<LearningPath[]>(`/api/v1/learning-paths`),
+  get: (id: string) => api<LearningPath>(`/api/v1/learning-paths/${id}`),
+  create: (input: {
+    title: string;
+    description?: string;
+    summary?: string;
+    coverColor?: string;
+    tags?: string[];
+  }) =>
+    api<LearningPath>(`/api/v1/learning-paths`, { method: "POST", body: input }),
+  update: (
+    id: string,
+    patch: {
+      title?: string;
+      description?: string;
+      summary?: string | null;
+      coverColor?: string | null;
+      tags?: string[];
+      status?: LearningPathStatus;
+    },
+  ) => api<LearningPath>(`/api/v1/learning-paths/${id}`, { method: "PATCH", body: patch }),
+  delete: (id: string) =>
+    api<void>(`/api/v1/learning-paths/${id}`, { method: "DELETE" }),
+  addCourse: (pathId: string, courseId: string, required = true) =>
+    api<PathCourseDto>(`/api/v1/learning-paths/${pathId}/courses`, {
+      method: "POST",
+      body: { courseId, required },
+    }),
+  removeCourse: (linkId: string) =>
+    api<void>(`/api/v1/learning-path-courses/${linkId}`, { method: "DELETE" }),
+  reorderCourses: (pathId: string, linkIds: string[]) =>
+    api<void>(`/api/v1/learning-paths/${pathId}/courses/order`, {
+      method: "PATCH",
+      body: { ids: linkIds },
+    }),
+  assign: (
+    pathId: string,
+    input: {
+      learners: AssignLearner[];
+      dueAt?: string | null;
+      mandatory?: boolean;
+    },
+  ) =>
+    api<{ created: number; skipped: number; assignments: PathAssignment[] }>(
+      `/api/v1/learning-paths/${pathId}/assignments`,
+      { method: "POST", body: input },
+    ),
+  roster: (pathId: string) =>
+    api<PathAssignment[]>(`/api/v1/learning-paths/${pathId}/assignments`),
+  unassign: (assignmentId: string) =>
+    api<void>(`/api/v1/learning-path-assignments/${assignmentId}`, {
+      method: "DELETE",
+    }),
+  mine: () => api<PathAssignment[]>(`/api/v1/me/learning-paths`),
+};
+
 export const Modules = {
   add: (courseId: string, title: string) =>
     api<ModuleDto>(`/api/v1/courses/${courseId}/modules`, {

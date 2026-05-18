@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 import {
   Certificates,
   Enrollments,
+  LearningPaths,
   type AppCertificate,
   type Enrollment,
   type EnrollmentStatus,
+  type PathAssignment,
 } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 
@@ -23,6 +25,7 @@ export default function MyLearningPage() {
   const router = useRouter();
   const [filter, setFilter] = useState<EnrollmentStatus | "ALL">("ALL");
   const [items, setItems] = useState<Enrollment[] | null>(null);
+  const [paths, setPaths] = useState<PathAssignment[]>([]);
   const [certs, setCerts] = useState<Map<string, AppCertificate>>(new Map());
   const [err, setErr] = useState<string | null>(null);
 
@@ -40,6 +43,11 @@ export default function MyLearningPage() {
 
   useEffect(() => {
     if (!getSession()) return;
+    LearningPaths.mine()
+      .then(setPaths)
+      .catch(() => {
+        // non-fatal
+      });
     Certificates.mine()
       .then((list) => {
         const m = new Map<string, AppCertificate>();
@@ -91,6 +99,68 @@ export default function MyLearningPage() {
       </div>
 
       {err ? <p className="text-sm text-[var(--danger)]">{err}</p> : null}
+
+      {paths.length > 0 ? (
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
+            My learning paths
+          </h2>
+          <ul className="grid gap-3 md:grid-cols-2">
+            {paths.map((p) => (
+              <li
+                key={p.id}
+                className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--panel)] shadow-sm"
+              >
+                <div
+                  className="h-2 w-full"
+                  style={{ background: p.pathCoverColor ?? "#1e63f2" }}
+                />
+                <div className="p-4">
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/learning-paths/${p.pathId}`}
+                      className="text-sm font-semibold hover:underline"
+                    >
+                      {p.pathTitle}
+                    </Link>
+                    <span
+                      className={
+                        "chip " +
+                        (p.status === "COMPLETED"
+                          ? "chip-success"
+                          : p.overdue
+                          ? "chip-danger"
+                          : p.status === "IN_PROGRESS"
+                          ? "chip-info"
+                          : p.status === "WAIVED"
+                          ? "chip-muted"
+                          : "chip-warn")
+                      }
+                    >
+                      {p.overdue && p.status !== "COMPLETED" ? "OVERDUE" : p.status}
+                    </span>
+                    {p.mandatory ? <span className="chip chip-warn">MANDATORY</span> : null}
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--border)]">
+                      <div
+                        className="h-full bg-[var(--accent)]"
+                        style={{ width: `${Math.max(2, p.progressPct)}%` }}
+                      />
+                    </div>
+                    <span className="w-12 text-right text-xs tabular-nums text-[var(--muted)]">
+                      {p.progressPct}%
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-[var(--muted)]">
+                    {p.dueAt ? `Due ${new Date(p.dueAt).toLocaleDateString()}` : "No due date"}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {items === null ? (
         <p className="text-sm text-[var(--muted)]">Loading…</p>

@@ -2,6 +2,7 @@ package com.lms.course.enrollment;
 
 import com.lms.course.certificate.CertificateService;
 import com.lms.course.domain.Course;
+import com.lms.course.path.LearningPathService;
 import com.lms.course.quiz.AttemptRepository;
 import com.lms.course.quiz.QuizRepository;
 import com.lms.course.quiz.QuizStatus;
@@ -30,6 +31,7 @@ public class EnrollmentService {
     private final QuizRepository quizzes;
     private final AttemptRepository attempts;
     private final CertificateService certificates;
+    private final LearningPathService learningPaths;
 
     public EnrollmentService(EnrollmentRepository enrollments,
                              LessonProgressRepository progress,
@@ -37,7 +39,8 @@ public class EnrollmentService {
                              LessonRepository lessons,
                              QuizRepository quizzes,
                              AttemptRepository attempts,
-                             @Lazy @Autowired CertificateService certificates) {
+                             @Lazy @Autowired CertificateService certificates,
+                             @Lazy @Autowired LearningPathService learningPaths) {
         this.enrollments = enrollments;
         this.progress = progress;
         this.courses = courses;
@@ -45,6 +48,7 @@ public class EnrollmentService {
         this.quizzes = quizzes;
         this.attempts = attempts;
         this.certificates = certificates;
+        this.learningPaths = learningPaths;
     }
 
     public record AssignResult(int created, int skipped, List<Enrollment> enrollments) {}
@@ -227,5 +231,9 @@ public class EnrollmentService {
                 e.setStatus(EnrollmentStatus.IN_PROGRESS);
             }
         });
+
+        // Cascade the recompute up to any learning path the user is on
+        // that includes this course, so path-level progress stays in sync.
+        learningPaths.recomputeAfterCourseChange(userId, courseId);
     }
 }
