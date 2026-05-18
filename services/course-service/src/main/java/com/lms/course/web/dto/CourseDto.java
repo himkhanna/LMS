@@ -11,6 +11,9 @@ public record CourseDto(
         UUID id,
         String title,
         String description,
+        String summary,
+        String coverColor,
+        List<String> tags,
         CourseStatus status,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
@@ -22,6 +25,9 @@ public record CourseDto(
                 c.getId(),
                 c.getTitle(),
                 c.getDescription(),
+                c.getSummary(),
+                c.getCoverColor(),
+                c.getTags(),
                 c.getStatus(),
                 c.getCreatedAt(),
                 c.getUpdatedAt(),
@@ -35,11 +41,14 @@ public record CourseDto(
                 c.getId(),
                 c.getTitle(),
                 c.getDescription(),
+                c.getSummary(),
+                c.getCoverColor(),
+                c.getTags(),
                 c.getStatus(),
                 c.getCreatedAt(),
                 c.getUpdatedAt(),
                 c.getPublishedAt(),
-                java.util.List.of()
+                List.of()
         );
     }
 }

@@ -245,6 +245,9 @@ export type Course = {
   id: string;
   title: string;
   description: string | null;
+  summary: string | null;
+  coverColor: string | null;
+  tags: string[];
   status: CourseStatus;
   createdAt: string;
   updatedAt: string;
@@ -271,6 +274,15 @@ export type AssetDto = {
   createdAt: string;
 };
 
+export type CourseUpdatePatch = {
+  title?: string;
+  description?: string;
+  summary?: string | null;
+  coverColor?: string | null;
+  tags?: string[];
+  status?: CourseStatus;
+};
+
 export const Courses = {
   list: (params: { status?: CourseStatus; page?: number; size?: number } = {}) => {
     const q = new URLSearchParams();
@@ -283,6 +295,8 @@ export const Courses = {
   get: (id: string) => api<Course>(`/api/v1/courses/${id}`),
   create: (input: { title: string; description?: string }) =>
     api<Course>(`/api/v1/courses`, { method: "POST", body: input }),
+  update: (id: string, patch: CourseUpdatePatch) =>
+    api<Course>(`/api/v1/courses/${id}`, { method: "PATCH", body: patch }),
   publish: (id: string) =>
     api<Course>(`/api/v1/courses/${id}/publish`, { method: "POST" }),
   unpublish: (id: string) =>
@@ -295,6 +309,20 @@ export const Courses = {
     const params = new URLSearchParams({ q, page: String(page), size: String(size) });
     return api<Page<Course>>(`/api/v1/courses/search?${params}`);
   },
+};
+
+export type CatalogResult = { courses: Course[]; tags: string[] };
+
+export const Catalog = {
+  browse: (params: { q?: string; tag?: string } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.q) qs.set("q", params.q);
+    if (params.tag) qs.set("tag", params.tag);
+    const s = qs.toString();
+    return api<CatalogResult>(`/api/v1/catalog/courses${s ? `?${s}` : ""}`);
+  },
+  enrollMe: (courseId: string) =>
+    api<Enrollment>(`/api/v1/courses/${courseId}/enroll-me`, { method: "POST" }),
 };
 
 export const Modules = {

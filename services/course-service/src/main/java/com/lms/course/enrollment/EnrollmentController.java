@@ -64,6 +64,23 @@ public class EnrollmentController {
         return EnrollmentDto.from(service.waive(id));
     }
 
+    // ---- Self-enrollment from the catalog ----
+
+    /**
+     * Any signed-in learner can self-enroll into a PUBLISHED course they
+     * find in the catalog. Idempotent: returns the existing enrollment
+     * if one exists. Created enrollments are never mandatory.
+     */
+    @PostMapping("/courses/{courseId}/enroll-me")
+    public EnrollmentDto enrollMe(@PathVariable UUID courseId,
+                                  @AuthenticationPrincipal Jwt jwt) {
+        return EnrollmentDto.from(service.selfEnroll(
+                courseId,
+                currentUserId(jwt),
+                jwt.getClaimAsString("email"),
+                jwt.getClaimAsString("name")));
+    }
+
     // ---- Learner-facing ----
 
     @GetMapping("/me/enrollments")

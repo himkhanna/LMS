@@ -57,6 +57,9 @@ public class CourseService {
         Course c = get(id);
         if (req.title() != null) c.setTitle(req.title());
         if (req.description() != null) c.setDescription(req.description());
+        if (req.summary() != null) c.setSummary(req.summary().isBlank() ? null : req.summary());
+        if (req.coverColor() != null) c.setCoverColor(req.coverColor().isBlank() ? null : req.coverColor());
+        if (req.tags() != null) c.setTags(req.tags());
         if (req.status() != null) c.setStatus(req.status());
         return c;
     }

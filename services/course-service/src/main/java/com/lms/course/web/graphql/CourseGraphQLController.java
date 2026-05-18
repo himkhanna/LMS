@@ -59,7 +59,8 @@ public class CourseGraphQLController {
 
     @MutationMapping
     public Course updateCourse(@Argument UUID id, @Argument UpdateCourseInput input) {
-        return service.update(id, new UpdateCourseRequest(input.title(), input.description(), input.status()));
+        return service.update(id, new UpdateCourseRequest(
+                input.title(), input.description(), null, null, null, input.status()));
     }
 
     @MutationMapping

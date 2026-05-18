@@ -201,6 +201,8 @@ export default function CourseDetailPage() {
         <p className="text-sm text-[var(--muted)]">{course.description}</p>
       ) : null}
 
+      {canAssign ? <CourseSettingsPanel course={course} onChange={reload} /> : null}
+
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Modules</h2>
         <p className="text-xs text-[var(--muted)]">
@@ -236,6 +238,162 @@ export default function CourseDetailPage() {
         onAssigned={() => reloadEnrollments()}
       />
     </div>
+  );
+}
+
+function CourseSettingsPanel({
+  course,
+  onChange,
+}: {
+  course: Course;
+  onChange: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [summary, setSummary] = useState(course.summary ?? "");
+  const [coverColor, setCoverColor] = useState(course.coverColor ?? "#1e63f2");
+  const [tagInput, setTagInput] = useState("");
+  const [tags, setTags] = useState<string[]>(course.tags ?? []);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+
+  function addTag() {
+    const next = tagInput.trim();
+    if (!next || tags.includes(next)) {
+      setTagInput("");
+      return;
+    }
+    setTags([...tags, next]);
+    setTagInput("");
+  }
+  function removeTag(t: string) {
+    setTags(tags.filter((x) => x !== t));
+  }
+
+  async function save() {
+    setSaving(true);
+    try {
+      await Courses.update(course.id, {
+        summary: summary.trim() || null,
+        coverColor: coverColor || null,
+        tags,
+      });
+      setSavedAt(new Date());
+      onChange();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <section className="rounded-lg border border-[var(--border)] bg-[var(--panel)] p-3 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div
+              className="h-6 w-6 rounded"
+              style={{ background: course.coverColor ?? "#1e63f2" }}
+            />
+            <span className="text-sm text-[var(--muted)]">Catalog card</span>
+            {course.tags?.length ? (
+              course.tags.map((t) => (
+                <span key={t} className="chip chip-muted">
+                  {t}
+                </span>
+              ))
+            ) : (
+              <span className="text-xs italic text-[var(--muted)]">no tags yet</span>
+            )}
+          </div>
+          <button onClick={() => setOpen(true)} className="btn-secondary">
+            Edit catalog details
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="space-y-3 rounded-lg border border-[var(--accent)] bg-[var(--panel)] p-4 shadow-sm">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold">Catalog card</h2>
+        <div className="flex items-center gap-3 text-xs text-[var(--muted)]">
+          {savedAt ? <span>Saved {savedAt.toLocaleTimeString()}</span> : null}
+          <button onClick={() => setOpen(false)} className="hover:text-[var(--text)]">
+            Close
+          </button>
+        </div>
+      </div>
+      <div className="grid gap-3 md:grid-cols-[1fr_140px]">
+        <label className="block text-sm">
+          <span className="block pb-1 text-[var(--muted)]">Summary (≤ 280 chars)</span>
+          <textarea
+            value={summary}
+            onChange={(e) => setSummary(e.target.value.slice(0, 280))}
+            rows={2}
+            className="input w-full"
+            placeholder="Short blurb shown on catalog cards. Falls back to description."
+          />
+          <span className="text-xs text-[var(--muted)]">{summary.length}/280</span>
+        </label>
+        <label className="block text-sm">
+          <span className="block pb-1 text-[var(--muted)]">Cover colour</span>
+          <input
+            type="color"
+            value={coverColor}
+            onChange={(e) => setCoverColor(e.target.value)}
+            className="h-10 w-full cursor-pointer rounded border border-[var(--border)] bg-white"
+          />
+          <span className="text-xs text-[var(--muted)]">{coverColor}</span>
+        </label>
+      </div>
+
+      <div>
+        <label className="block text-sm">
+          <span className="block pb-1 text-[var(--muted)]">Tags</span>
+        </label>
+        <div className="flex flex-wrap items-center gap-2">
+          {tags.map((t) => (
+            <span key={t} className="chip chip-muted">
+              {t}
+              <button
+                type="button"
+                onClick={() => removeTag(t)}
+                className="ml-1 text-[var(--muted)] hover:text-[var(--danger)]"
+              >
+                ✕
+              </button>
+            </span>
+          ))}
+          <input
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addTag();
+              } else if (e.key === "," || e.key === "Tab") {
+                if (tagInput.trim()) {
+                  e.preventDefault();
+                  addTag();
+                }
+              }
+            }}
+            placeholder="add a tag and press enter"
+            className="input flex-1 min-w-[10rem]"
+          />
+        </div>
+        <p className="mt-1 text-xs text-[var(--muted)]">
+          Used to group courses on the catalog (e.g. <code>compliance</code>,{" "}
+          <code>onboarding</code>, <code>leadership</code>).
+        </p>
+      </div>
+
+      <div className="flex justify-end">
+        <button onClick={save} disabled={saving} className="btn-primary">
+          {saving ? "Saving…" : "Save catalog details"}
+        </button>
+      </div>
+    </section>
   );
 }
 

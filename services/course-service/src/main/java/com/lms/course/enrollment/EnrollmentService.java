@@ -111,6 +111,31 @@ public class EnrollmentService {
         enrollments.deleteById(enrollmentId);
     }
 
+    /**
+     * Self-enroll a learner into a PUBLISHED course. Idempotent: returns
+     * the existing enrollment if one exists; refuses on non-published
+     * courses so this can't be used to back-door into draft/archived
+     * content from the catalog endpoint.
+     */
+    public Enrollment selfEnroll(UUID courseId, UUID userId, String email, String displayName) {
+        Course course = courses.findById(courseId)
+                .orElseThrow(() -> new CourseNotFoundException("Course", courseId));
+        if (course.getStatus() != com.lms.course.domain.CourseStatus.PUBLISHED) {
+            throw new IllegalArgumentException("Course is not open for self-enrollment");
+        }
+        return enrollments.findByCourseIdAndUserId(courseId, userId).orElseGet(() -> {
+            Enrollment e = new Enrollment();
+            e.setCourse(course);
+            e.setUserId(userId);
+            e.setUserEmail(email);
+            e.setUserName(displayName);
+            e.setStatus(EnrollmentStatus.ASSIGNED);
+            e.setAssignedByEmail(email); // self
+            e.setMandatory(false);
+            return enrollments.save(e);
+        });
+    }
+
     public Enrollment waive(UUID enrollmentId) {
         Enrollment e = enrollments.findById(enrollmentId)
                 .orElseThrow(() -> new CourseNotFoundException("Enrollment", enrollmentId));
