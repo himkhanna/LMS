@@ -839,6 +839,20 @@ export const PptDesigner = {
       method: "POST",
       body: proposed,
     }),
+  /**
+   * Render every slide of a .pptx to a PNG and create a course where each
+   * lesson displays the actual visual slide (rather than extracted text).
+   */
+  renderFromFile: (input: { file: File; topic?: string; slidesPerModule?: number }) => {
+    const fd = new FormData();
+    fd.append("file", input.file);
+    if (input.topic) fd.append("topic", input.topic);
+    if (input.slidesPerModule != null) fd.append("slidesPerModule", String(input.slidesPerModule));
+    return api<Course>(`/api/v1/courses/render-from-file`, {
+      method: "POST",
+      body: fd,
+    });
+  },
 };
 
 // ---- Quizzes (course-service) ----

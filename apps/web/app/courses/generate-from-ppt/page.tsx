@@ -6,12 +6,12 @@ import { useRouter } from "next/navigation";
 import { AiCourses, PptDesigner, type ProposedCourse } from "@/lib/api";
 import { CourseDesigner } from "@/components/CourseDesigner";
 
-type Mode = "ai" | "designer";
+type Mode = "ai" | "designer" | "slideshow";
 
 export default function GenerateFromPptPage() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
-  const [mode, setMode] = useState<Mode>("designer");
+  const [mode, setMode] = useState<Mode>("slideshow");
   const [topic, setTopic] = useState("");
   const [audience, setAudience] = useState("");
   const [moduleCount, setModuleCount] = useState("3");
@@ -25,6 +25,8 @@ export default function GenerateFromPptPage() {
   const [proposed, setProposed] = useState<ProposedCourse | null>(null);
 
   const isDesigner = mode === "designer";
+  const isSlideshow = mode === "slideshow";
+  const isAi = mode === "ai";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,7 +34,14 @@ export default function GenerateFromPptPage() {
     setBusy(true);
     setErr(null);
     try {
-      if (isDesigner) {
+      if (isSlideshow) {
+        const course = await PptDesigner.renderFromFile({
+          file,
+          topic: topic.trim() || undefined,
+          slidesPerModule: Number(lessonsPerModule) || undefined,
+        });
+        router.push(`/courses/${course.id}`);
+      } else if (isDesigner) {
         const result = await PptDesigner.extract({
           file,
           topic: topic.trim() || undefined,
@@ -119,17 +128,34 @@ export default function GenerateFromPptPage() {
             <input
               type="radio"
               name="mode"
+              value="slideshow"
+              checked={mode === "slideshow"}
+              onChange={() => setMode("slideshow")}
+              className="mt-1"
+            />
+            <span>
+              <span className="font-medium">Slideshow (visual slides)</span>
+              <span className="block text-xs text-[var(--muted)]">
+                Renders every slide as an image so learners see the actual deck
+                (logos, diagrams, formatting). Each slide becomes one lesson,
+                and the slideshow viewer flips through them. .pptx only.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="radio"
+              name="mode"
               value="designer"
               checked={mode === "designer"}
               onChange={() => setMode("designer")}
               className="mt-1"
             />
             <span>
-              <span className="font-medium">Designer (no AI)</span>
+              <span className="font-medium">Designer (text extract)</span>
               <span className="block text-xs text-[var(--muted)]">
-                Each slide becomes a lesson. After upload you can rename, reorder,
-                merge, and delete modules + lessons before saving. Instant; no
-                provider needed.
+                Extracts text from each slide into editable lessons. Rename,
+                reorder, merge before saving. No images — text only.
               </span>
             </span>
           </label>
@@ -165,7 +191,7 @@ export default function GenerateFromPptPage() {
           />
         </label>
 
-        {!isDesigner ? (
+        {isAi ? (
           <label className="block text-sm">
             <span className="block pb-1 text-[var(--muted)]">Audience (optional)</span>
             <input
@@ -178,7 +204,7 @@ export default function GenerateFromPptPage() {
         ) : null}
 
         <div className="flex gap-3 text-sm">
-          {!isDesigner ? (
+          {isAi ? (
             <label className="block">
               <span className="block pb-1 text-[var(--muted)]">Modules</span>
               <input
@@ -193,7 +219,7 @@ export default function GenerateFromPptPage() {
           ) : null}
           <label className="block">
             <span className="block pb-1 text-[var(--muted)]">
-              {isDesigner ? "Slides per module" : "Lessons per module"}
+              {isAi ? "Lessons per module" : "Slides per module"}
             </span>
             <input
               type="number"
@@ -206,7 +232,7 @@ export default function GenerateFromPptPage() {
           </label>
         </div>
 
-        {!isDesigner ? (
+        {isAi ? (
           <label className="block text-sm">
             <span className="block pb-1 text-[var(--muted)]">Override model (optional)</span>
             <input
@@ -224,12 +250,16 @@ export default function GenerateFromPptPage() {
           className="rounded bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {busy
-            ? isDesigner
-              ? "Extracting slides…"
-              : "Generating… (30–90s)"
-            : isDesigner
-              ? "Open in designer"
-              : "Generate course"}
+            ? isSlideshow
+              ? "Rendering slides…"
+              : isDesigner
+                ? "Extracting slides…"
+                : "Generating… (30–90s)"
+            : isSlideshow
+              ? "Render & create course"
+              : isDesigner
+                ? "Open in designer"
+                : "Generate course"}
         </button>
         {err ? <p className="whitespace-pre-wrap text-sm text-red-400">{err}</p> : null}
       </form>

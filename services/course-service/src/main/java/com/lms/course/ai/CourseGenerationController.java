@@ -26,11 +26,14 @@ public class CourseGenerationController {
 
     private final CourseGenerationService generator;
     private final MechanicalDeckCourseService mechanical;
+    private final SlideshowCourseService slideshow;
 
     public CourseGenerationController(CourseGenerationService generator,
-                                      MechanicalDeckCourseService mechanical) {
+                                      MechanicalDeckCourseService mechanical,
+                                      SlideshowCourseService slideshow) {
         this.generator = generator;
         this.mechanical = mechanical;
+        this.slideshow = slideshow;
     }
 
     @PostMapping("/generate")
@@ -99,6 +102,49 @@ public class CourseGenerationController {
                 effectiveTopic, audience, moduleCount, lessonsPerModule,
                 providerId, model, maxTokens, extracted);
         var course = generator.generate(serviceReq, jwt.getTokenValue());
+        return ResponseEntity
+                .created(URI.create("/api/v1/courses/" + course.getId()))
+                .body(CourseDto.from(course));
+    }
+
+    /**
+     * Render every slide of a .pptx to a PNG and create a course where
+     * each lesson displays the rendered slide image (not just extracted
+     * text). Speaker notes, if present, are tucked under a collapsible
+     * "Speaker notes" panel. Only .pptx is supported here — legacy
+     * .ppt (HSLF) uses a different render pipeline.
+     */
+    @PostMapping(value = "/render-from-file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<CourseDto> renderFromFile(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "topic", required = false) String topic,
+            @RequestParam(value = "slidesPerModule", required = false) Integer slidesPerModule) {
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        String name = file.getOriginalFilename() == null ? "" : file.getOriginalFilename().toLowerCase();
+        if (!name.endsWith(".pptx")) {
+            throw new IllegalArgumentException(
+                    "Slideshow mode supports .pptx only. Re-save the deck as .pptx and try again.");
+        }
+        List<SlideDeckRenderer.RenderedSlide> rendered;
+        List<SlideDeckExtractor.ExtractedSlide> extracted;
+        try (var renderIn = file.getInputStream()) {
+            rendered = SlideDeckRenderer.renderToPng(renderIn);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Could not render deck: " + e.getMessage(), e);
+        }
+        try (var textIn = file.getInputStream()) {
+            extracted = SlideDeckExtractor.extract(textIn);
+        } catch (IOException e) {
+            // Non-fatal: keep going with images only
+            extracted = List.of();
+        }
+        if (rendered.isEmpty()) {
+            throw new IllegalArgumentException("Deck contains no renderable slides");
+        }
+        String effectiveTopic = (topic == null || topic.isBlank()) ? stripExtension(name) : topic;
+        var course = slideshow.build(effectiveTopic, extracted, rendered, slidesPerModule);
         return ResponseEntity
                 .created(URI.create("/api/v1/courses/" + course.getId()))
                 .body(CourseDto.from(course));
