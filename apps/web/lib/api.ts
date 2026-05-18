@@ -431,6 +431,44 @@ export const LearningPaths = {
   mine: () => api<PathAssignment[]>(`/api/v1/me/learning-paths`),
 };
 
+// ---- Discussion ----
+
+export type DiscussionPost = {
+  id: string;
+  courseId: string;
+  parentId: string | null;
+  authorUserId: string;
+  authorEmail: string;
+  authorName: string | null;
+  body: string;
+  pinned: boolean;
+  createdAt: string;
+  updatedAt: string;
+  replies: DiscussionPost[];
+};
+
+export const Discussion = {
+  list: (courseId: string) =>
+    api<DiscussionPost[]>(`/api/v1/courses/${courseId}/discussion`),
+  create: (courseId: string, body: string) =>
+    api<DiscussionPost>(`/api/v1/courses/${courseId}/discussion`, {
+      method: "POST",
+      body: { body },
+    }),
+  reply: (parentId: string, body: string) =>
+    api<DiscussionPost>(`/api/v1/discussion/${parentId}/replies`, {
+      method: "POST",
+      body: { body },
+    }),
+  pin: (id: string, pinned: boolean) =>
+    api<DiscussionPost>(
+      `/api/v1/discussion/${id}/pin?pinned=${pinned}`,
+      { method: "POST" },
+    ),
+  delete: (id: string) =>
+    api<void>(`/api/v1/discussion/${id}`, { method: "DELETE" }),
+};
+
 export const Modules = {
   add: (courseId: string, title: string) =>
     api<ModuleDto>(`/api/v1/courses/${courseId}/modules`, {

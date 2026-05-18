@@ -34,6 +34,7 @@ import {
 } from "@/lib/api";
 import { getSession, hasRole } from "@/lib/auth";
 import { AssignDialog } from "@/components/AssignDialog";
+import { DiscussionPanel } from "@/components/DiscussionPanel";
 
 export default function CourseDetailPage() {
   const router = useRouter();
@@ -222,6 +223,8 @@ export default function CourseDetailPage() {
         canAuthor={canAssign}
         onChange={reloadQuizzes}
       />
+
+      <DiscussionPanel courseId={course.id} />
 
       {canAssign ? (
         <EnrollmentsPanel
