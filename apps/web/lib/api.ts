@@ -623,6 +623,43 @@ export const AiCourses = {
   },
 };
 
+// ---- PPT designer (extract then commit, no AI) ----
+
+export type ProposedLesson = {
+  title: string;
+  content: string | null;
+  durationSecs: number | null;
+};
+
+export type ProposedModule = {
+  title: string;
+  lessons: ProposedLesson[];
+};
+
+export type ProposedCourse = {
+  title: string;
+  description: string | null;
+  modules: ProposedModule[];
+};
+
+export const PptDesigner = {
+  extract: (input: { file: File; topic?: string; lessonsPerModule?: number }) => {
+    const fd = new FormData();
+    fd.append("file", input.file);
+    if (input.topic) fd.append("topic", input.topic);
+    if (input.lessonsPerModule != null) fd.append("lessonsPerModule", String(input.lessonsPerModule));
+    return api<ProposedCourse>(`/api/v1/courses/extract-from-file`, {
+      method: "POST",
+      body: fd,
+    });
+  },
+  createFromStructure: (proposed: ProposedCourse) =>
+    api<Course>(`/api/v1/courses/from-structure`, {
+      method: "POST",
+      body: proposed,
+    }),
+};
+
 // ---- Quizzes (course-service) ----
 
 export type QuestionType =

@@ -104,6 +104,49 @@ public class CourseGenerationController {
                 .body(CourseDto.from(course));
     }
 
+    /**
+     * Parse a slide deck and return the proposed course / module / lesson
+     * structure without persisting. Used by the PPT designer view so HR
+     * can edit titles + content + structure before committing.
+     */
+    @PostMapping(value = "/extract-from-file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public MechanicalDeckCourseService.ProposedCourse extractFromFile(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "topic", required = false) String topic,
+            @RequestParam(value = "lessonsPerModule", required = false) Integer lessonsPerModule) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Missing file");
+        }
+        String name = file.getOriginalFilename() == null ? "" : file.getOriginalFilename().toLowerCase();
+        if (!name.endsWith(".pptx") && !name.endsWith(".ppt")) {
+            throw new IllegalArgumentException("Only .pptx and .ppt are supported");
+        }
+        List<SlideDeckExtractor.ExtractedSlide> slides;
+        try (var in = file.getInputStream()) {
+            slides = SlideDeckExtractor.extract(in);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Could not read uploaded file: " + e.getMessage(), e);
+        }
+        if (slides == null || slides.isEmpty()) {
+            throw new IllegalArgumentException("No slides could be extracted from the deck");
+        }
+        String effectiveTopic = (topic == null || topic.isBlank()) ? stripExtension(name) : topic;
+        return mechanical.propose(effectiveTopic, slides, lessonsPerModule);
+    }
+
+    /**
+     * Persist a (possibly edited) proposed course structure. Called by the
+     * PPT designer's "Create course" action.
+     */
+    @PostMapping("/from-structure")
+    public ResponseEntity<CourseDto> fromStructure(
+            @RequestBody MechanicalDeckCourseService.ProposedCourse req) {
+        var course = mechanical.persist(req);
+        return ResponseEntity
+                .created(URI.create("/api/v1/courses/" + course.getId()))
+                .body(CourseDto.from(course));
+    }
+
     private static String stripExtension(String filename) {
         int dot = filename.lastIndexOf('.');
         return dot > 0 ? filename.substring(0, dot) : filename;
