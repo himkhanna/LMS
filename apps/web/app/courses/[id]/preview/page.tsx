@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import DOMPurify from "isomorphic-dompurify";
-import { Courses, Progress, type Course, type LessonDto } from "@/lib/api";
+import { API_BASE, Courses, Progress, type Course, type LessonDto } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import { VideoPlayer } from "@/components/VideoPlayer";
 
@@ -245,7 +245,15 @@ function LessonBody({ content }: { content: string | null }) {
   }
   const looksLikeHtml = /<[a-z][^>]*>/i.test(content);
   if (looksLikeHtml) {
-    const safe = DOMPurify.sanitize(content);
+    // Backend embeds slide images as <img src="/api/v1/assets/files/..."/>.
+    // The browser resolves that against the web app's origin, but the
+    // course-service runs on a different port (API_BASE), so we rewrite
+    // any /api/v1/* path to an absolute URL before sanitising.
+    const expanded = content.replace(
+      /(src|href)="\/api\/v1\//g,
+      `$1="${API_BASE}/api/v1/`,
+    );
+    const safe = DOMPurify.sanitize(expanded);
     return (
       <div
         className="prose prose-invert mt-6 max-w-none leading-relaxed"
