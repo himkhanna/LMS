@@ -11,7 +11,9 @@ public record LessonDto(
         String title,
         String content,
         int position,
-        Integer durationSecs
+        Integer durationSecs,
+        String videoUrl,
+        String videoProvider
 ) {
     public static LessonDto from(Lesson l) {
         return new LessonDto(
@@ -21,7 +23,9 @@ public record LessonDto(
                 l.getTitle(),
                 l.getContent(),
                 l.getPosition(),
-                l.getDurationSecs()
+                l.getDurationSecs(),
+                l.getVideoUrl(),
+                l.getVideoProvider()
         );
     }
 }

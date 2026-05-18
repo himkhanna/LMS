@@ -33,6 +33,10 @@ public class LessonProgress {
     @Column(name = "completed_at")
     private OffsetDateTime completedAt;
 
+    /** Furthest playback % reached for video lessons (0..100). */
+    @Column(name = "watch_pct", nullable = false)
+    private int watchPct = 0;
+
     @PrePersist void onCreate() { if (startedAt == null) startedAt = OffsetDateTime.now(); }
 
     public UUID getId() { return id; }
@@ -48,4 +52,6 @@ public class LessonProgress {
     public void setStartedAt(OffsetDateTime v) { this.startedAt = v; }
     public OffsetDateTime getCompletedAt() { return completedAt; }
     public void setCompletedAt(OffsetDateTime v) { this.completedAt = v; }
+    public int getWatchPct() { return watchPct; }
+    public void setWatchPct(int v) { this.watchPct = Math.max(0, Math.min(100, v)); }
 }

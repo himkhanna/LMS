@@ -239,6 +239,8 @@ export type LessonDto = {
   content: string | null;
   position: number;
   durationSecs: number | null;
+  videoUrl?: string | null;
+  videoProvider?: "YOUTUBE" | "VIMEO" | "FILE" | "URL" | null;
 };
 
 export type Course = {
@@ -456,7 +458,10 @@ export const Lessons = {
       method: "POST",
       body: input,
     }),
-  update: (id: string, patch: { title?: string; content?: string; durationSecs?: number }) =>
+  update: (
+    id: string,
+    patch: { title?: string; content?: string; durationSecs?: number; videoUrl?: string | null },
+  ) =>
     api<LessonDto>(`/api/v1/lessons/${id}`, {
       method: "PATCH",
       body: patch,
@@ -723,6 +728,7 @@ export type LessonProgress = {
   status: LessonProgressStatus;
   startedAt: string;
   completedAt: string | null;
+  watchPct: number;
 };
 
 export const Progress = {
@@ -730,6 +736,11 @@ export const Progress = {
     api<LessonProgress>(`/api/v1/me/lessons/${lessonId}/start`, { method: "POST" }),
   markCompleted: (lessonId: string) =>
     api<LessonProgress>(`/api/v1/me/lessons/${lessonId}/complete`, { method: "POST" }),
+  markWatched: (lessonId: string, watchPct: number) =>
+    api<LessonProgress>(`/api/v1/me/lessons/${lessonId}/watch`, {
+      method: "POST",
+      body: { watchPct },
+    }),
   forCourse: (courseId: string) =>
     api<LessonProgress[]>(`/api/v1/me/courses/${courseId}/progress`),
 };

@@ -166,6 +166,34 @@ public class EnrollmentService {
         return p;
     }
 
+    /**
+     * Update the learner's furthest watched % on a video lesson. Never
+     * decreases the stored value; marks the lesson complete on ≥ 90 %.
+     */
+    public LessonProgress recordWatchProgress(UUID userId, UUID lessonId, int watchPct) {
+        int clamped = Math.max(0, Math.min(100, watchPct));
+        var lesson = lessons.findById(lessonId)
+                .orElseThrow(() -> new CourseNotFoundException("Lesson", lessonId));
+        UUID courseId = lesson.getModule().getCourse().getId();
+        LessonProgress p = progress.findByUserIdAndLessonId(userId, lessonId).orElseGet(() -> {
+            LessonProgress np = new LessonProgress();
+            np.setUserId(userId);
+            np.setLessonId(lessonId);
+            np.setCourseId(courseId);
+            np.setStatus(LessonProgressStatus.STARTED);
+            return progress.save(np);
+        });
+        if (clamped > p.getWatchPct()) p.setWatchPct(clamped);
+        if (clamped >= 90 && p.getStatus() != LessonProgressStatus.COMPLETED) {
+            p.setStatus(LessonProgressStatus.COMPLETED);
+            p.setCompletedAt(OffsetDateTime.now());
+            recomputeEnrollmentProgress(userId, courseId);
+        } else {
+            markEnrollmentStartedIfNeeded(userId, courseId);
+        }
+        return p;
+    }
+
     public LessonProgress recordLessonCompleted(UUID userId, UUID lessonId) {
         var lesson = lessons.findById(lessonId)
                 .orElseThrow(() -> new CourseNotFoundException("Lesson", lessonId));

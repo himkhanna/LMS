@@ -106,6 +106,21 @@ public class EnrollmentController {
         return LessonProgressDto.from(service.recordLessonCompleted(userId, lessonId));
     }
 
+    public record WatchRequest(int watchPct) {}
+
+    /**
+     * Report video playback progress. When watch_pct >= 90, the lesson is
+     * marked complete and the enrollment % is recomputed. Idempotent;
+     * never reduces the stored watch_pct.
+     */
+    @PostMapping("/me/lessons/{lessonId}/watch")
+    public LessonProgressDto markWatched(@PathVariable UUID lessonId,
+                                         @RequestBody WatchRequest req,
+                                         @AuthenticationPrincipal Jwt jwt) {
+        UUID userId = currentUserId(jwt);
+        return LessonProgressDto.from(service.recordWatchProgress(userId, lessonId, req.watchPct()));
+    }
+
     @GetMapping("/me/courses/{courseId}/progress")
     public List<LessonProgressDto> myCourseProgress(@PathVariable UUID courseId,
                                                     @AuthenticationPrincipal Jwt jwt) {

@@ -48,6 +48,7 @@ public class LessonController {
         if (req.title() != null) lesson.setTitle(req.title());
         if (req.content() != null) lesson.setContent(req.content());
         if (req.durationSecs() != null) lesson.setDurationSecs(req.durationSecs());
+        if (req.videoUrl() != null) lesson.setVideoUrl(req.videoUrl());
         return LessonDto.from(lesson);
     }
 

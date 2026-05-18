@@ -30,6 +30,14 @@ public class Lesson {
     @Column(name = "duration_secs")
     private Integer durationSecs;
 
+    /** Optional video URL — direct .mp4, YouTube, Vimeo or Teams Stream. */
+    @Column(name = "video_url", columnDefinition = "text")
+    private String videoUrl;
+
+    /** Cached provider classification: "YOUTUBE" / "VIMEO" / "FILE" / null. */
+    @Column(name = "video_provider", length = 32)
+    private String videoProvider;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -59,4 +67,23 @@ public class Lesson {
     public void setPosition(int position) { this.position = position; }
     public Integer getDurationSecs() { return durationSecs; }
     public void setDurationSecs(Integer durationSecs) { this.durationSecs = durationSecs; }
+    public String getVideoUrl() { return videoUrl; }
+    public void setVideoUrl(String videoUrl) {
+        this.videoUrl = videoUrl == null || videoUrl.isBlank() ? null : videoUrl.trim();
+        this.videoProvider = classify(this.videoUrl);
+    }
+    public String getVideoProvider() { return videoProvider; }
+
+    /**
+     * Classify a URL so the SPA renders the right player. We never store
+     * media inline — only the URL — so this is a lightweight string match.
+     */
+    private static String classify(String url) {
+        if (url == null) return null;
+        String lower = url.toLowerCase();
+        if (lower.contains("youtube.com") || lower.contains("youtu.be")) return "YOUTUBE";
+        if (lower.contains("vimeo.com")) return "VIMEO";
+        if (lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.endsWith(".m4v")) return "FILE";
+        return "URL";
+    }
 }

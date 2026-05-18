@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import DOMPurify from "isomorphic-dompurify";
 import { Courses, Progress, type Course, type LessonDto } from "@/lib/api";
 import { getSession } from "@/lib/auth";
+import { VideoPlayer } from "@/components/VideoPlayer";
 
 const PER_SLIDE_SECS = 15;
 
@@ -193,6 +194,21 @@ export default function CoursePreviewPage() {
 
       <div className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-8 shadow-sm">
         <h1 className="text-3xl font-semibold leading-tight">{slide.lesson.title}</h1>
+        {slide.lesson.videoUrl ? (
+          <div className="mt-4">
+            <VideoPlayer
+              url={slide.lesson.videoUrl}
+              provider={slide.lesson.videoProvider}
+              onProgress={(pct) => {
+                Progress.markWatched(slide.lesson.id, pct).catch(() => {
+                  // ignore: best-effort
+                });
+                if (pct >= 90) markLessonComplete(slide.lesson.id);
+              }}
+              onEnded={() => markLessonComplete(slide.lesson.id)}
+            />
+          </div>
+        ) : null}
         <LessonBody content={slide.lesson.content} />
       </div>
 

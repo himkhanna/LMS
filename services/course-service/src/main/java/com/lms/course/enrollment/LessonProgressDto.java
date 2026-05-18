@@ -10,11 +10,13 @@ public record LessonProgressDto(
         UUID courseId,
         LessonProgressStatus status,
         OffsetDateTime startedAt,
-        OffsetDateTime completedAt
+        OffsetDateTime completedAt,
+        int watchPct
 ) {
     public static LessonProgressDto from(LessonProgress p) {
         return new LessonProgressDto(
                 p.getId(), p.getUserId(), p.getLessonId(), p.getCourseId(),
-                p.getStatus(), p.getStartedAt(), p.getCompletedAt());
+                p.getStatus(), p.getStartedAt(), p.getCompletedAt(),
+                p.getWatchPct());
     }
 }
