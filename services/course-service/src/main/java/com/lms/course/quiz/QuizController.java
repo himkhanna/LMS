@@ -7,14 +7,23 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Class-level @Transactional keeps the Hibernate session open while
+ * DTO mappers (QuizDto.summary, AttemptDto.from, ...) touch lazy
+ * associations like Quiz.course or Attempt.quiz. Without this, listing
+ * endpoints throw LazyInitializationException once any row exists,
+ * because spring.jpa.open-in-view is false in this service.
+ */
 @RestController
 @RequestMapping("/api/v1")
+@Transactional
 public class QuizController {
 
     private final QuizService service;
