@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import DOMPurify from "isomorphic-dompurify";
 import { API_BASE, Courses, Progress, type Course, type LessonDto } from "@/lib/api";
-import { getSession } from "@/lib/auth";
+import { getSession, hasRole } from "@/lib/auth";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { SpeechPlayer } from "@/components/SpeechPlayer";
 
@@ -27,8 +27,36 @@ export default function CoursePreviewPage() {
   const [idx, setIdx] = useState(0);
   const [remaining, setRemaining] = useState(PER_SLIDE_SECS);
   const [done, setDone] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const startedRef = useRef<Set<string>>(new Set());
   const completedRef = useRef<Set<string>>(new Set());
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const canEdit =
+    hasRole("ROLE_ADMIN") || hasRole("ROLE_HR") || hasRole("ROLE_INSTRUCTOR");
+
+  // Fullscreen toggle scoped to the slideshow container; tracks the
+  // browser's fullscreen state so the label flips back when the user
+  // hits Esc to exit.
+  const toggleFullscreen = useCallback(async () => {
+    if (typeof document === "undefined") return;
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else if (rootRef.current) {
+        await rootRef.current.requestFullscreen();
+      }
+    } catch {
+      // Older browsers / blocked by policy — silently ignore.
+    }
+  }, []);
+
+  useEffect(() => {
+    function onChange() {
+      setIsFullscreen(!!document.fullscreenElement);
+    }
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
 
   useEffect(() => {
     if (!getSession()) {
@@ -117,13 +145,23 @@ export default function CoursePreviewPage() {
       } else if (e.key === "ArrowLeft") {
         e.preventDefault();
         goPrev();
+      } else if (e.key === "f" || e.key === "F") {
+        // Avoid hijacking F when the user is typing into a form field
+        const t = e.target as HTMLElement | null;
+        const tag = t?.tagName?.toLowerCase();
+        if (tag === "input" || tag === "textarea" || tag === "select") return;
+        e.preventDefault();
+        toggleFullscreen();
       } else if (e.key === "Escape") {
-        router.push(`/courses/${params.id}`);
+        // Let the browser handle Esc when in fullscreen — it already
+        // exits — and only navigate away when we're NOT fullscreen.
+        if (document.fullscreenElement) return;
+        router.push(canEdit ? `/courses/${params.id}` : "/my-learning");
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [goNext, goPrev, remaining, router, params.id]);
+  }, [goNext, goPrev, remaining, router, params.id, toggleFullscreen, canEdit]);
 
   if (err && !course) return <p className="text-sm text-red-400">{err}</p>;
   if (!course) return <p className="text-sm text-[var(--muted)]">Loading…</p>;
@@ -172,15 +210,32 @@ export default function CoursePreviewPage() {
   const pct = Math.round(((slide.slideNumber - 1) / slides.length) * 100);
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-10rem)] max-w-3xl flex-col gap-6 py-4">
+    <div
+      ref={rootRef}
+      className={
+        isFullscreen
+          ? "flex h-screen w-screen flex-col gap-4 overflow-y-auto bg-[var(--bg)] px-8 py-6"
+          : "mx-auto flex min-h-[calc(100vh-10rem)] max-w-3xl flex-col gap-6 py-4"
+      }
+    >
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs text-[var(--muted)]">
           <span>
             Module {slide.moduleIndex}: <span className="text-[var(--text)]">{slide.moduleTitle}</span>
           </span>
-          <Link href={`/courses/${course.id}`} className="hover:underline">
-            Exit preview
-          </Link>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="hover:underline"
+              title="Fullscreen (F)"
+            >
+              {isFullscreen ? "Exit fullscreen" : "⛶ Fullscreen"}
+            </button>
+            <Link href={canEdit ? `/courses/${course.id}` : "/my-learning"} className="hover:underline">
+              {canEdit ? "Exit preview" : "← My Learning"}
+            </Link>
+          </div>
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--panel-2)]">
           <div

@@ -72,7 +72,10 @@ export function SpeechPlayer({ text, scopeKey, autoPlay, onEnded }: Props) {
     [voices, voiceName],
   );
 
-  // Cancel any speech when the slide changes.
+  // Cancel any speech when the slide changes. Re-runs when the loaded
+  // autoplay preference flips from its initial false -> true, so the
+  // very first slide isn't skipped just because localStorage hadn't
+  // hydrated yet.
   useEffect(() => {
     if (!supported) return;
     window.speechSynthesis.cancel();
@@ -82,11 +85,14 @@ export function SpeechPlayer({ text, scopeKey, autoPlay, onEnded }: Props) {
     const should = (autoPlay ?? autoPlayPref) && !!text?.trim();
     if (should) {
       // Small delay — Chrome ignores speak() while a cancel is settling.
-      const t = setTimeout(() => start(), 120);
+      // Browser autoplay policies may still block the very first call if
+      // the page hasn't received any user gesture yet; subsequent slides
+      // (after Next/keyboard nav) work fine.
+      const t = setTimeout(() => start(), 200);
       return () => clearTimeout(t);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scopeKey, supported]);
+  }, [scopeKey, supported, autoPlayPref, autoPlay]);
 
   function start() {
     if (!supported || !text?.trim()) return;
