@@ -11,6 +11,10 @@ type Props = {
   /** Called when speech finishes naturally (not on pause). Lets the
    *  slideshow viewer optionally auto-advance to the next slide. */
   onEnded?: () => void;
+  /** When true (learner mode) we hide voice/speed pickers behind a small
+   *  ⚙ toggle so the toolbar is just Play/Pause + auto-play. Admin and
+   *  HR see the full toolbar in preview mode for diagnostics. */
+  compact?: boolean;
 };
 
 const LS_VOICE = "lms.tts.voice";
@@ -22,7 +26,7 @@ const LS_AUTOPLAY = "lms.tts.autoplay";
  * zero backend. Voice list comes from the OS/browser (e.g. Microsoft
  * voices on Windows, Apple voices on Mac, eSpeak on Linux Firefox).
  */
-export function SpeechPlayer({ text, scopeKey, autoPlay, onEnded }: Props) {
+export function SpeechPlayer({ text, scopeKey, autoPlay, onEnded, compact }: Props) {
   const [supported, setSupported] = useState(true);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceName, setVoiceName] = useState<string>("");
@@ -30,6 +34,7 @@ export function SpeechPlayer({ text, scopeKey, autoPlay, onEnded }: Props) {
   const [autoPlayPref, setAutoPlayPref] = useState<boolean>(false);
   const [playing, setPlaying] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   // Load saved preferences once.
@@ -143,17 +148,17 @@ export function SpeechPlayer({ text, scopeKey, autoPlay, onEnded }: Props) {
 
   if (!text?.trim()) return null;
 
-  return (
-    <div className="flex flex-wrap items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-xs">
-      <span className="font-semibold text-[var(--muted)]">🔊 Narration</span>
-      {!playing ? (
-        <button onClick={start} className="btn-mini">▶ Play</button>
-      ) : paused ? (
-        <button onClick={resume} className="btn-mini">▶ Resume</button>
-      ) : (
-        <button onClick={pause} className="btn-mini">⏸ Pause</button>
-      )}
-      {playing ? <button onClick={stop} className="btn-mini">⏹ Stop</button> : null}
+  const showAdvanced = !compact || advancedOpen;
+  const transport = !playing ? (
+    <button onClick={start} className="btn-mini" aria-label="Play narration">▶ Play</button>
+  ) : paused ? (
+    <button onClick={resume} className="btn-mini" aria-label="Resume narration">▶ Resume</button>
+  ) : (
+    <button onClick={pause} className="btn-mini" aria-label="Pause narration">⏸ Pause</button>
+  );
+
+  const advanced = (
+    <>
       <label className="ml-2 flex items-center gap-1 text-[var(--muted)]">
         Voice:
         <select
@@ -207,8 +212,30 @@ export function SpeechPlayer({ text, scopeKey, autoPlay, onEnded }: Props) {
             localStorage.setItem(LS_AUTOPLAY, e.target.checked ? "1" : "0");
           }}
         />
-        Auto-play on each slide
+        Auto-play
       </label>
+    </>
+  );
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-xs">
+      <span className="font-semibold text-[var(--muted)]">🔊</span>
+      {transport}
+      {playing ? (
+        <button onClick={stop} className="btn-mini" aria-label="Stop narration">⏹</button>
+      ) : null}
+      {showAdvanced ? advanced : null}
+      {compact ? (
+        <button
+          type="button"
+          onClick={() => setAdvancedOpen((v) => !v)}
+          className="ml-auto text-[var(--muted)] hover:text-[var(--text)]"
+          aria-label={advancedOpen ? "Hide narration settings" : "Show narration settings"}
+          title={advancedOpen ? "Hide settings" : "Voice, speed, auto-play"}
+        >
+          ⚙
+        </button>
+      ) : null}
     </div>
   );
 }

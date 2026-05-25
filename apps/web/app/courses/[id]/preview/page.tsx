@@ -243,18 +243,23 @@ export default function CoursePreviewPage() {
             style={{ width: `${pct}%` }}
           />
         </div>
-        <div className="text-xs text-[var(--muted)]">
-          Slide {slide.slideNumber} of {slides.length}
-        </div>
+        {canEdit ? (
+          <div className="text-xs text-[var(--muted)]">
+            Slide {slide.slideNumber} of {slides.length}
+          </div>
+        ) : null}
       </div>
 
       <div className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-8 shadow-sm">
-        <h1 className="text-3xl font-semibold leading-tight">{slide.lesson.title}</h1>
+        {canEdit || showLessonTitle(slide.lesson.title) ? (
+          <h1 className="text-3xl font-semibold leading-tight">{slide.lesson.title}</h1>
+        ) : null}
         {slide.lesson.voiceOverText ? (
           <div className="mt-3">
             <SpeechPlayer
               text={slide.lesson.voiceOverText}
               scopeKey={slide.lesson.id}
+              compact={!canEdit}
             />
           </div>
         ) : null}
@@ -301,6 +306,16 @@ export default function CoursePreviewPage() {
       </div>
     </div>
   );
+}
+
+/**
+ * Skip the lesson title for learners when it's the auto-generated
+ * "Slide N" placeholder from a PPT slideshow upload. HR-customised
+ * titles still show. Admin/HR see all titles via canEdit.
+ */
+function showLessonTitle(title: string): boolean {
+  if (!title) return false;
+  return !/^\s*slide\s+\d+\s*$/i.test(title);
 }
 
 function LessonBody({ content }: { content: string | null }) {
