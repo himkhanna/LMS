@@ -15,6 +15,10 @@ type Props = {
    *  ⚙ toggle so the toolbar is just Play/Pause + auto-play. Admin and
    *  HR see the full toolbar in preview mode for diagnostics. */
   compact?: boolean;
+  /** When true, render no UI at all but keep the playback logic active.
+   *  Used for the learner slideshow where narration is part of the
+   *  experience, not a control surface. */
+  hidden?: boolean;
 };
 
 const LS_VOICE = "lms.tts.voice";
@@ -26,7 +30,7 @@ const LS_AUTOPLAY = "lms.tts.autoplay";
  * zero backend. Voice list comes from the OS/browser (e.g. Microsoft
  * voices on Windows, Apple voices on Mac, eSpeak on Linux Firefox).
  */
-export function SpeechPlayer({ text, scopeKey, autoPlay, onEnded, compact }: Props) {
+export function SpeechPlayer({ text, scopeKey, autoPlay, onEnded, compact, hidden }: Props) {
   const [supported, setSupported] = useState(true);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceName, setVoiceName] = useState<string>("");
@@ -146,7 +150,17 @@ export function SpeechPlayer({ text, scopeKey, autoPlay, onEnded, compact }: Pro
     );
   }
 
+  // Collapse the ⚙ panel back to default each time the slide changes,
+  // so learners flipping through slides don't keep seeing the diagnostics
+  // they opened on a previous slide.
+  useEffect(() => {
+    setAdvancedOpen(false);
+  }, [scopeKey]);
+
   if (!text?.trim()) return null;
+  // Headless mode: render no UI, but the playback effect above still
+  // runs so autoPlay + onEnded keep the slideshow chain advancing.
+  if (hidden) return null;
 
   const showAdvanced = !compact || advancedOpen;
   const transport = !playing ? (

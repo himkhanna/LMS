@@ -29,6 +29,11 @@ export default function CoursePreviewPage() {
   const [done, setDone] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [resumePrompt, setResumePrompt] = useState<{ idx: number; lessonTitle: string } | null>(null);
+  /** Browser autoplay policy: speechSynthesis.speak before a user gesture
+   *  is silently dropped on Chrome / Edge / Safari. We gate the first
+   *  slide behind a single "Start training" click so the whole chain
+   *  plays afterwards. Set true once the learner has interacted. */
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
   const startedRef = useRef<Set<string>>(new Set());
   const completedRef = useRef<Set<string>>(new Set());
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -160,6 +165,25 @@ export default function CoursePreviewPage() {
     return () => clearTimeout(t);
   }, [remaining, idx, done, slides.length]);
 
+  // In learner mode, slides WITHOUT narration auto-advance when the
+  // per-slide timer hits zero. Narrated slides advance on onEnded
+  // instead and ignore this hook.
+  useEffect(() => {
+    if (canEdit) return;
+    if (done || slides.length === 0) return;
+    if (remaining !== 0) return;
+    const current = slides[idx];
+    if (!current) return;
+    if (current.lesson.voiceOverText) return; // narration drives advance
+    if (!audioUnlocked && slides.some((s) => !!s.lesson.voiceOverText)) return;
+    const t = setTimeout(() => {
+      markLessonComplete(current.lesson.id);
+      if (idx >= slides.length - 1) setDone(true);
+      else setIdx((i) => i + 1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [canEdit, remaining, idx, slides, done, audioUnlocked, markLessonComplete]);
+
   const goNext = useCallback(() => {
     if (slides.length === 0) return;
     if (remaining > 0) return;
@@ -171,6 +195,22 @@ export default function CoursePreviewPage() {
     }
     setIdx((i) => i + 1);
   }, [idx, remaining, slides, markLessonComplete]);
+
+  /** Auto-advance trigger from the SpeechPlayer — runs when the
+   *  narration finishes naturally. We bypass the per-slide timer in
+   *  learner mode so the chain plays end-to-end without manual clicks.
+   *  Admin/preview mode ignores this (their setting is the timer). */
+  const onNarrationEnded = useCallback(() => {
+    if (canEdit) return;
+    if (slides.length === 0) return;
+    const current = slides[idx];
+    if (current) markLessonComplete(current.lesson.id);
+    if (idx >= slides.length - 1) {
+      setDone(true);
+      return;
+    }
+    setIdx((i) => i + 1);
+  }, [canEdit, idx, slides, markLessonComplete]);
 
   const goPrev = useCallback(() => {
     if (done) {
@@ -263,6 +303,30 @@ export default function CoursePreviewPage() {
           : "mx-auto flex min-h-[calc(100vh-10rem)] max-w-3xl flex-col gap-6 py-4"
       }
     >
+      {!canEdit && !audioUnlocked && !resumePrompt && slides.some((s) => !!s.lesson.voiceOverText) ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--panel)] p-6 text-center shadow-xl">
+            <h2 className="text-lg font-semibold">Ready to begin?</h2>
+            <p className="mt-2 text-sm text-[var(--muted)]">
+              This training is narrated. Click below to enable audio — your
+              browser blocks autoplay until you give the go-ahead. Slides
+              advance automatically as the narration finishes.
+            </p>
+            <button
+              autoFocus
+              onClick={() => setAudioUnlocked(true)}
+              className="mt-5 rounded bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white hover:bg-[var(--accent-hover)]"
+            >
+              ▶ Start training
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {resumePrompt ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
@@ -347,6 +411,9 @@ export default function CoursePreviewPage() {
               text={slide.lesson.voiceOverText}
               scopeKey={slide.lesson.id}
               compact={!canEdit}
+              hidden={!canEdit}
+              autoPlay={!canEdit && audioUnlocked}
+              onEnded={onNarrationEnded}
             />
           </div>
         ) : null}
