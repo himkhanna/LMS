@@ -32,6 +32,10 @@ public class Course {
     @Column(name = "cover_color", length = 7)
     private String coverColor;
 
+    /** Optional uploaded catalog card image; rendered above cover_color. */
+    @Column(name = "cover_image_url", columnDefinition = "text")
+    private String coverImageUrl;
+
     /** Free-form tags for catalog filtering ("compliance", "onboarding", ...). */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb", nullable = false)
@@ -75,6 +79,10 @@ public class Course {
     public void setSummary(String summary) { this.summary = summary; }
     public String getCoverColor() { return coverColor; }
     public void setCoverColor(String coverColor) { this.coverColor = coverColor; }
+    public String getCoverImageUrl() { return coverImageUrl; }
+    public void setCoverImageUrl(String coverImageUrl) {
+        this.coverImageUrl = coverImageUrl == null || coverImageUrl.isBlank() ? null : coverImageUrl.trim();
+    }
     public List<String> getTags() { return tags; }
     public void setTags(List<String> tags) { this.tags = tags == null ? new ArrayList<>() : tags; }
     public CourseStatus getStatus() { return status; }

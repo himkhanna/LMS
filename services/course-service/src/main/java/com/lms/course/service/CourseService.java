@@ -28,11 +28,16 @@ public class CourseService {
     private final CourseRepository courses;
     private final CourseModuleRepository modules;
     private final CourseEventPublisher events;
+    private final com.lms.course.storage.ObjectStorage storage;
 
-    public CourseService(CourseRepository courses, CourseModuleRepository modules, CourseEventPublisher events) {
+    public CourseService(CourseRepository courses,
+                         CourseModuleRepository modules,
+                         CourseEventPublisher events,
+                         com.lms.course.storage.ObjectStorage storage) {
         this.courses = courses;
         this.modules = modules;
         this.events = events;
+        this.storage = storage;
     }
 
     @Transactional(readOnly = true)
@@ -105,6 +110,52 @@ public class CourseService {
                 l.setDurationSecs(clamped);
             }
         }
+    }
+
+    /**
+     * Save the uploaded image under a stable key and store the public URL
+     * on the course. The URL points at /api/v1/assets/files/... which the
+     * LocalAssetController serves with no auth — same scheme used for
+     * slideshow images. Replaces any previous cover image (orphaned blob
+     * cleanup is a TODO; harmless until storage costs matter).
+     */
+    public Course replaceCoverImage(UUID id, org.springframework.web.multipart.MultipartFile file) {
+        Course c = get(id);
+        String ext = guessExtension(file);
+        String key = "courses/%s/cover-%s%s".formatted(id, UUID.randomUUID(), ext);
+        try (var in = file.getInputStream()) {
+            storage.put(key, in, file.getSize(), file.getContentType());
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("Could not save cover image", e);
+        }
+        c.setCoverImageUrl("/api/v1/assets/files/" + key);
+        return c;
+    }
+
+    public Course clearCoverImage(UUID id) {
+        Course c = get(id);
+        c.setCoverImageUrl(null);
+        return c;
+    }
+
+    private static String guessExtension(org.springframework.web.multipart.MultipartFile file) {
+        String name = file.getOriginalFilename();
+        if (name != null) {
+            int dot = name.lastIndexOf('.');
+            if (dot > 0 && dot < name.length() - 1) {
+                String ext = name.substring(dot).toLowerCase();
+                if (ext.matches("\\.(jpg|jpeg|png|webp|gif)")) return ext;
+            }
+        }
+        String ct = file.getContentType();
+        if (ct == null) return ".png";
+        return switch (ct) {
+            case "image/jpeg" -> ".jpg";
+            case "image/png" -> ".png";
+            case "image/webp" -> ".webp";
+            case "image/gif" -> ".gif";
+            default -> ".png";
+        };
     }
 
     public Course publish(UUID id) {

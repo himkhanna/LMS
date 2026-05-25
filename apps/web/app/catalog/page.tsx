@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Catalog, Enrollments, type CatalogResult, type Course, type Enrollment } from "@/lib/api";
+import { API_BASE, Catalog, Enrollments, type CatalogResult, type Course, type Enrollment } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 
 export default function CatalogPage() {
@@ -152,13 +152,24 @@ function CatalogCard({
   const cover = course.coverColor ?? "#1e63f2";
   const lessonCount = course.modules.reduce((n, m) => n + m.lessons.length, 0);
   const summary = course.summary ?? course.description ?? "";
+  const imageUrl = absoluteAssetUrl(course.coverImageUrl);
 
   return (
     <li className="flex flex-col overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--panel)] shadow-sm">
       <div
-        className="h-20 w-full"
+        className="relative h-32 w-full overflow-hidden"
         style={{ background: `linear-gradient(135deg, ${cover}, ${shade(cover, -25)})` }}
-      />
+      >
+        {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+            loading="lazy"
+          />
+        ) : null}
+      </div>
       <div className="flex flex-1 flex-col p-4">
         <Link
           href={`/courses/${course.id}/preview`}
@@ -236,6 +247,18 @@ function EnrolledBadge({
 }
 
 /** Crude shade helper — adjusts a #rrggbb hex by a percentage. */
+/**
+ * Course cover image URLs come back from the API as relative paths
+ * (e.g. /api/v1/assets/files/courses/.../cover.jpg). The browser would
+ * resolve those against the web app's origin, so we prepend API_BASE.
+ */
+function absoluteAssetUrl(url: string | null): string | null {
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url)) return url;
+  if (url.startsWith("/api/v1/")) return `${API_BASE}${url}`;
+  return url;
+}
+
 function shade(hex: string, pct: number): string {
   if (!/^#[0-9a-f]{6}$/i.test(hex)) return hex;
   const num = parseInt(hex.slice(1), 16);

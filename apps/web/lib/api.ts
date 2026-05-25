@@ -249,6 +249,7 @@ export type Course = {
   description: string | null;
   summary: string | null;
   coverColor: string | null;
+  coverImageUrl: string | null;
   tags: string[];
   status: CourseStatus;
   createdAt: string;
@@ -304,6 +305,16 @@ export const Courses = {
       method: "POST",
       body: { secs },
     }),
+  uploadCoverImage: (id: string, file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return api<Course>(`/api/v1/courses/${id}/cover-image`, {
+      method: "POST",
+      body: fd,
+    });
+  },
+  clearCoverImage: (id: string) =>
+    api<Course>(`/api/v1/courses/${id}/cover-image`, { method: "DELETE" }),
   publish: (id: string) =>
     api<Course>(`/api/v1/courses/${id}/publish`, { method: "POST" }),
   unpublish: (id: string) =>

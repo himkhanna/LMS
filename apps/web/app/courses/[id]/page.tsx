@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -21,6 +21,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  API_BASE,
   Courses,
   Enrollments,
   Lessons,
@@ -245,6 +246,115 @@ export default function CourseDetailPage() {
   );
 }
 
+function CoverImageRow({
+  course,
+  onChange,
+}: {
+  course: Course;
+  onChange: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const preview = course.coverImageUrl ? absoluteAssetUrl(course.coverImageUrl) : null;
+
+  async function pickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setErr("Pick a jpg, png, webp, or gif");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setErr("Cover image must be < 5 MB");
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    try {
+      await Courses.uploadCoverImage(course.id, file);
+      onChange();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
+  async function clear() {
+    if (!confirm("Remove the cover image?")) return;
+    setBusy(true);
+    try {
+      await Courses.clearCoverImage(course.id);
+      onChange();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <label className="block text-sm">
+        <span className="block pb-1 text-[var(--muted)]">Cover image (optional)</span>
+        <span className="block text-xs text-[var(--muted)]">
+          Shown on the catalog card. Falls back to the cover colour if unset.
+          Recommended 1280×720 jpg/png; max 5 MB.
+        </span>
+      </label>
+      <div className="flex flex-wrap items-center gap-3">
+        <div
+          className="h-24 w-44 overflow-hidden rounded border border-[var(--border)]"
+          style={{ background: course.coverColor ?? "#1e63f2" }}
+        >
+          {preview ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={preview} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-xs text-white/80">
+              No image
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col gap-2">
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            onChange={pickFile}
+            disabled={busy}
+            className="text-xs file:mr-2 file:rounded file:border-0 file:bg-[var(--panel-2)] file:px-3 file:py-1 file:text-xs"
+          />
+          {course.coverImageUrl ? (
+            <button
+              type="button"
+              onClick={clear}
+              disabled={busy}
+              className="btn-mini btn-mini-danger w-fit"
+            >
+              Remove image
+            </button>
+          ) : null}
+          {busy ? <span className="text-xs text-[var(--muted)]">Uploading…</span> : null}
+          {err ? <span className="text-xs text-[var(--danger)]">{err}</span> : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Course cover image URLs come back from the API as relative paths
+ * (e.g. /api/v1/assets/files/courses/.../cover.jpg). The browser would
+ * resolve those against the web app's origin, so we prepend API_BASE.
+ */
+function absoluteAssetUrl(url: string | null): string | null {
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url)) return url;
+  if (url.startsWith("/api/v1/")) return `${API_BASE}${url}`;
+  return url;
+}
+
 function SlidePacingControl({
   course,
   onChange,
@@ -430,6 +540,9 @@ function CourseSettingsPanel({
           <span className="text-xs text-[var(--muted)]">{coverColor}</span>
         </label>
       </div>
+
+      <CoverImageRow course={course} onChange={onChange} />
+
 
       <div>
         <label className="block text-sm">

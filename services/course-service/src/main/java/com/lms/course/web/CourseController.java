@@ -6,9 +6,12 @@ import com.lms.course.web.dto.*;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.net.URI;
 import java.util.UUID;
 
@@ -82,6 +85,29 @@ public class CourseController {
         }
         service.setAllLessonDurations(id, req.secs());
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Upload (or replace) the catalog cover image for a course. Returns
+     * the updated course. Accepted types: jpeg/png/webp/gif. The previous
+     * image (if any) is left in storage — orphaned cleanup is a TODO.
+     */
+    @PostMapping(value = "/{id}/cover-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public CourseDto uploadCoverImage(@PathVariable UUID id,
+                                      @RequestParam("file") MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Missing file");
+        }
+        String ct = file.getContentType();
+        if (ct == null || !ct.startsWith("image/")) {
+            throw new IllegalArgumentException("Cover must be an image (jpeg, png, webp, gif)");
+        }
+        return CourseDto.from(service.replaceCoverImage(id, file));
+    }
+
+    @DeleteMapping("/{id}/cover-image")
+    public CourseDto clearCoverImage(@PathVariable UUID id) {
+        return CourseDto.from(service.clearCoverImage(id));
     }
 
     @PostMapping("/{id}/publish")
