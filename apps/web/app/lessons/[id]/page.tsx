@@ -174,6 +174,24 @@ export default function LessonDetailPage() {
         <textarea
           value={voiceOver}
           onChange={(e) => setVoiceOver(e.target.value)}
+          onPaste={(e) => {
+            // The Tiptap editor above installs ProseMirror plugins that
+            // sometimes swallow paste events bubbling up from sibling
+            // inputs. Handle the paste explicitly so plain-text clipboard
+            // content always lands in the textarea.
+            const text = e.clipboardData?.getData("text/plain") ?? "";
+            if (!text) return; // empty clipboard — let the default run
+            e.preventDefault();
+            e.stopPropagation();
+            const target = e.currentTarget;
+            const start = target.selectionStart ?? voiceOver.length;
+            const end = target.selectionEnd ?? voiceOver.length;
+            const next = voiceOver.slice(0, start) + text + voiceOver.slice(end);
+            setVoiceOver(next);
+            requestAnimationFrame(() => {
+              target.selectionStart = target.selectionEnd = start + text.length;
+            });
+          }}
           rows={Math.min(10, Math.max(3, voiceOver.split("\n").length + 1))}
           placeholder="e.g. Welcome to lesson one. Today we'll look at how phishing attacks start with a single careless click…"
           className="w-full rounded border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm"
