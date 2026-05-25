@@ -19,6 +19,7 @@ export default function TakeQuizPage() {
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [answers, setAnswers] = useState<Answers>({});
+  const [currentIdx, setCurrentIdx] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<Attempt | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -127,7 +128,77 @@ export default function TakeQuizPage() {
 
   // Attempt in progress
   return (
-    <div className="mx-auto max-w-2xl space-y-6 py-4">
+    <PaginatedQuiz
+      quiz={quiz}
+      answers={answers}
+      onChangeAnswer={(qid, v) => setAnswers((a) => ({ ...a, [qid]: v }))}
+      currentIdx={currentIdx}
+      setCurrentIdx={setCurrentIdx}
+      onSubmit={submit}
+      submitting={submitting}
+      secondsLeft={secondsLeft}
+      err={err}
+    />
+  );
+}
+
+function PaginatedQuiz({
+  quiz,
+  answers,
+  onChangeAnswer,
+  currentIdx,
+  setCurrentIdx,
+  onSubmit,
+  submitting,
+  secondsLeft,
+  err,
+}: {
+  quiz: Quiz;
+  answers: Answers;
+  onChangeAnswer: (qid: string, v: unknown[]) => void;
+  currentIdx: number;
+  setCurrentIdx: (n: number) => void;
+  onSubmit: () => void;
+  submitting: boolean;
+  secondsLeft: number | null;
+  err: string | null;
+}) {
+  const total = quiz.questions.length;
+  const safeIdx = Math.max(0, Math.min(currentIdx, total - 1));
+  const current = quiz.questions[safeIdx];
+  const answered = quiz.questions.filter(
+    (q) => Array.isArray(answers[q.id]) && (answers[q.id] as unknown[]).length > 0,
+  ).length;
+  const allAnswered = answered === total;
+  const isLast = safeIdx === total - 1;
+  const isFirst = safeIdx === 0;
+  const pct = Math.round(((safeIdx + 1) / total) * 100);
+
+  function go(delta: number) {
+    setCurrentIdx(Math.max(0, Math.min(total - 1, safeIdx + delta)));
+  }
+
+  // Arrow-key navigation on the wrapper for keyboard users
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const t = e.target as HTMLElement | null;
+      const tag = t?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select") return;
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        go(1);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        go(-1);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [safeIdx, total]);
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-5 py-4">
       <div className="flex items-center justify-between">
         <Link
           href={`/courses/${quiz.courseId}`}
@@ -135,37 +206,112 @@ export default function TakeQuizPage() {
         >
           ← Exit
         </Link>
-        {secondsLeft != null ? (
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-medium ${
-              secondsLeft < 30 ? "bg-red-100 text-red-700" : "bg-[var(--accent-soft)] text-[var(--accent)]"
-            }`}
-          >
-            Time left: {formatTime(secondsLeft)}
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-[var(--muted)] tabular-nums">
+            {answered}/{total} answered
           </span>
-        ) : null}
+          {secondsLeft != null ? (
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-medium ${
+                secondsLeft < 30
+                  ? "bg-red-100 text-red-700"
+                  : "bg-[var(--accent-soft)] text-[var(--accent)]"
+              }`}
+            >
+              {formatTime(secondsLeft)}
+            </span>
+          ) : null}
+        </div>
       </div>
-      <h1 className="text-xl font-semibold">{quiz.title}</h1>
-      <ol className="space-y-4">
-        {quiz.questions.map((q, i) => (
-          <QuestionInput
-            key={q.id}
-            question={q}
-            index={i + 1}
-            value={answers[q.id]}
-            onChange={(v) => setAnswers((a) => ({ ...a, [q.id]: v }))}
+
+      <div className="space-y-1">
+        <div className="flex items-baseline justify-between text-xs text-[var(--muted)]">
+          <span>{quiz.title}</span>
+          <span>
+            Question {safeIdx + 1} of {total}
+          </span>
+        </div>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--panel-2)]">
+          <div
+            className="h-full bg-[var(--accent)] transition-all duration-300"
+            style={{ width: `${pct}%` }}
           />
-        ))}
-      </ol>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)] p-6 shadow-sm">
+        <QuestionInput
+          question={current}
+          index={safeIdx + 1}
+          value={answers[current.id]}
+          onChange={(v) => onChangeAnswer(current.id, v)}
+        />
+      </div>
+
       {err ? <p className="text-sm text-[var(--danger)]">{err}</p> : null}
-      <div className="flex justify-end">
+
+      <div className="flex items-center justify-between">
         <button
-          onClick={submit}
-          disabled={submitting}
-          className="rounded bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white hover:bg-[var(--accent-hover)] disabled:opacity-50"
+          onClick={() => go(-1)}
+          disabled={isFirst}
+          className="btn-secondary disabled:opacity-40"
         >
-          {submitting ? "Submitting…" : "Submit quiz"}
+          ← Previous
         </button>
+        <span className="text-xs text-[var(--muted)]">Use ← → keys to navigate</span>
+        {isLast ? (
+          <button
+            onClick={onSubmit}
+            disabled={submitting}
+            className="rounded bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-white hover:bg-[var(--accent-hover)] disabled:opacity-50"
+            title={allAnswered ? "" : `${total - answered} question(s) unanswered`}
+          >
+            {submitting
+              ? "Submitting…"
+              : allAnswered
+                ? "Submit quiz"
+                : `Submit (${total - answered} unanswered)`}
+          </button>
+        ) : (
+          <button onClick={() => go(1)} className="btn-primary">
+            Next →
+          </button>
+        )}
+      </div>
+
+      <div className="rounded-lg border border-[var(--border)] bg-[var(--panel)] p-3">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+          Jump to question
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {quiz.questions.map((q, i) => {
+            const isAnswered =
+              Array.isArray(answers[q.id]) && (answers[q.id] as unknown[]).length > 0;
+            const isCurrent = i === safeIdx;
+            return (
+              <button
+                key={q.id}
+                onClick={() => setCurrentIdx(i)}
+                title={
+                  isCurrent
+                    ? "Current"
+                    : isAnswered
+                      ? "Answered — click to revisit"
+                      : "Not answered yet"
+                }
+                className={`h-7 w-7 rounded text-xs font-medium tabular-nums ${
+                  isCurrent
+                    ? "bg-[var(--accent)] text-white"
+                    : isAnswered
+                      ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                      : "border border-[var(--border)] bg-[var(--panel)] text-[var(--muted)] hover:text-[var(--text)]"
+                }`}
+              >
+                {i + 1}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
