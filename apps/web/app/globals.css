@@ -128,3 +128,26 @@ a { color: var(--accent); }
   outline: none;
 }
 .input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* AI-generated lesson polish: theme-aware hero image + key-takeaways
+   callout. Inline styles emitted by the LLM lesson builder still work,
+   but these classes win for users running in dark mode. */
+.lesson-hero img {
+  width: 100%;
+  max-height: 360px;
+  object-fit: cover;
+  border-radius: 12px;
+  display: block;
+}
+.lesson-hero { margin: 0 0 1.25rem 0; }
+.key-takeaways {
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  background: var(--accent-soft);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  color: var(--text);
+}
+.key-takeaways h3 { margin-top: 0; }
+.key-takeaways ul { margin: 0.25rem 0 0 1.25rem; padding: 0; }
+.key-takeaways li { margin: 0.25rem 0; }
