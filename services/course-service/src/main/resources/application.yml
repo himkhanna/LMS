@@ -35,7 +35,9 @@ app:
     secret: ${JWT_SECRET:dev-only-secret-change-me-please-32+chars-needed-for-hs256}
   ai-gateway:
     base-url: ${AI_GATEWAY_URL:http://localhost:8082}
-    timeout-seconds: ${AI_GATEWAY_TIMEOUT:120}
+    # Long enough for slow local models (Ollama on CPU can take minutes
+    # for a structured JSON response). Cloud providers respond in seconds.
+    timeout-seconds: ${AI_GATEWAY_TIMEOUT:600}
   storage:
     provider: ${STORAGE_PROVIDER:local}
     local:
