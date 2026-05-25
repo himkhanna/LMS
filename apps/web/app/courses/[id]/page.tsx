@@ -626,18 +626,66 @@ function QuizzesPanel({
     }
   }
 
+  const docxInputRef = useRef<HTMLInputElement | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+
+  async function importDocx(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportBusy(true);
+    setImportMsg(null);
+    try {
+      const res = await Quizzes.importDocx(courseId, file);
+      const warn = res.warnings?.length
+        ? ` (warnings: ${res.warnings.join("; ")})`
+        : "";
+      setImportMsg(`Imported "${res.quiz.title}" — ${res.questionCount} questions${warn}. Created as DRAFT; review and publish.`);
+      onChange();
+    } catch (err) {
+      setImportMsg(err instanceof Error ? `Import failed: ${err.message}` : "Import failed");
+    } finally {
+      setImportBusy(false);
+      if (docxInputRef.current) docxInputRef.current.value = "";
+    }
+  }
+
   return (
     <section className="space-y-3">
       <div className="flex items-baseline justify-between">
         <h2 className="text-lg font-medium">Quizzes &amp; assessments</h2>
         {canAuthor ? (
-          adding ? null : (
-            <button onClick={() => setAdding(true)} className="btn-secondary">
-              + New quiz
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              ref={docxInputRef}
+              type="file"
+              accept=".docx"
+              onChange={importDocx}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => docxInputRef.current?.click()}
+              disabled={importBusy}
+              className="btn-secondary"
+              title="Bulk-import a quiz from a .docx file (Question N | Topic: ... | A./B./C./D. + Correct answer: + Why:)"
+            >
+              {importBusy ? "Importing…" : "📄 Import .docx"}
             </button>
-          )
+            {adding ? null : (
+              <button onClick={() => setAdding(true)} className="btn-secondary">
+                + New quiz
+              </button>
+            )}
+          </div>
         ) : null}
       </div>
+
+      {importMsg ? (
+        <p className={`rounded-md border p-2 text-xs ${importMsg.startsWith("Import failed") ? "border-red-300 bg-red-50 text-red-700" : "border-emerald-300 bg-emerald-50 text-emerald-700"}`}>
+          {importMsg}
+        </p>
+      ) : null}
 
       {adding ? (
         <form

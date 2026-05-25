@@ -1,12 +1,14 @@
 package com.lms.course.quiz;
 
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -17,10 +19,42 @@ public class QuizController {
 
     private final QuizService service;
     private final QuizGenerationService generation;
+    private final QuizDocxImporter docxImporter;
 
-    public QuizController(QuizService service, QuizGenerationService generation) {
+    public QuizController(QuizService service,
+                          QuizGenerationService generation,
+                          QuizDocxImporter docxImporter) {
         this.service = service;
         this.generation = generation;
+        this.docxImporter = docxImporter;
+    }
+
+    public record DocxImportResponse(QuizDto quiz, int questionCount, List<String> warnings) {}
+
+    /**
+     * Bulk-import a quiz from a Word (.docx) document following the
+     * "Question N | Topic: ... | (Select all that apply)?" template
+     * (see Data_Security_Quiz_1.docx for the canonical example).
+     * Creates the quiz as DRAFT — HR reviews + publishes.
+     */
+    @PostMapping(value = "/courses/{courseId}/quizzes/import-docx", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN','HR','INSTRUCTOR')")
+    public DocxImportResponse importDocx(
+            @PathVariable UUID courseId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "title", required = false) String title) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Missing file");
+        }
+        String name = file.getOriginalFilename() == null ? "" : file.getOriginalFilename().toLowerCase();
+        if (!name.endsWith(".docx")) {
+            throw new IllegalArgumentException("Only .docx is supported");
+        }
+        var result = docxImporter.importDocx(courseId, title, file);
+        return new DocxImportResponse(
+                QuizDto.from(result.quiz(), true),
+                result.questionCount(),
+                result.warnings());
     }
 
     // ---- Authoring (admin / HR / instructor) ----

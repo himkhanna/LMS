@@ -987,6 +987,15 @@ export const Quizzes = {
       method: "POST",
       body: input,
     }),
+  importDocx: (courseId: string, file: File, title?: string) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    if (title) fd.append("title", title);
+    return api<{ quiz: Quiz; questionCount: number; warnings: string[] }>(
+      `/api/v1/courses/${courseId}/quizzes/import-docx`,
+      { method: "POST", body: fd },
+    );
+  },
   update: (
     id: string,
     patch: Partial<QuizCreate> & { status?: QuizStatus },

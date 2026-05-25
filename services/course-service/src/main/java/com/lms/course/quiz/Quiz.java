@@ -48,6 +48,14 @@ public class Quiz {
     @Column(name = "shuffle_questions", nullable = false)
     private boolean shuffleQuestions = false;
 
+    @Column(name = "shuffle_options", nullable = false)
+    private boolean shuffleOptions = false;
+
+    /** Minimum minutes a learner must wait between a failed attempt and
+     *  their next try. Null = no cooldown. */
+    @Column(name = "cooldown_after_fail_mins")
+    private Integer cooldownAfterFailMins;
+
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 32)
     private QuizStatus status = QuizStatus.DRAFT;
 
@@ -90,6 +98,10 @@ public class Quiz {
     public void setMaxAttempts(Integer v) { this.maxAttempts = v; }
     public boolean isShuffleQuestions() { return shuffleQuestions; }
     public void setShuffleQuestions(boolean v) { this.shuffleQuestions = v; }
+    public boolean isShuffleOptions() { return shuffleOptions; }
+    public void setShuffleOptions(boolean v) { this.shuffleOptions = v; }
+    public Integer getCooldownAfterFailMins() { return cooldownAfterFailMins; }
+    public void setCooldownAfterFailMins(Integer v) { this.cooldownAfterFailMins = v; }
     public QuizStatus getStatus() { return status; }
     public void setStatus(QuizStatus v) { this.status = v; }
     public int getPosition() { return position; }

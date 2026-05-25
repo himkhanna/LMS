@@ -15,6 +15,8 @@ public record QuizDto(
         Integer timeLimitMins,
         Integer maxAttempts,
         boolean shuffleQuestions,
+        boolean shuffleOptions,
+        Integer cooldownAfterFailMins,
         QuizStatus status,
         int position,
         OffsetDateTime createdAt,
@@ -36,6 +38,8 @@ public record QuizDto(
                 q.getTimeLimitMins(),
                 q.getMaxAttempts(),
                 q.isShuffleQuestions(),
+                q.isShuffleOptions(),
+                q.getCooldownAfterFailMins(),
                 q.getStatus(),
                 q.getPosition(),
                 q.getCreatedAt(),
@@ -54,10 +58,17 @@ public record QuizDto(
         return new QuizDto(
                 s.id(), s.courseId(), s.moduleId(), s.lessonId(),
                 s.title(), s.description(), s.passScore(), s.timeLimitMins(),
-                s.maxAttempts(), s.shuffleQuestions(), s.status(), s.position(),
+                s.maxAttempts(), s.shuffleQuestions(), s.shuffleOptions(),
+                s.cooldownAfterFailMins(),
+                s.status(), s.position(),
                 s.createdAt(), s.updatedAt(),
                 s.totalQuestions(), s.totalPoints(),
                 questions
         );
+    }
+
+    /** Convenience: include answers if and only if {@code includeAnswers} true. */
+    public static QuizDto from(Quiz q, boolean includeAnswers) {
+        return withQuestions(q, includeAnswers);
     }
 }

@@ -45,6 +45,11 @@ public class Question {
     @Column(columnDefinition = "text")
     private String explanation;
 
+    /** Free-text topic / category (e.g. "Phishing & Social Engineering")
+     *  used for analytics grouping and import metadata. */
+    @Column(length = 128)
+    private String topic;
+
     @Column(nullable = false)
     private int position;
 
@@ -63,6 +68,10 @@ public class Question {
     public void setPoints(int v) { this.points = v; }
     public String getExplanation() { return explanation; }
     public void setExplanation(String v) { this.explanation = v; }
+    public String getTopic() { return topic; }
+    public void setTopic(String v) {
+        this.topic = v == null || v.isBlank() ? null : v.trim();
+    }
     public int getPosition() { return position; }
     public void setPosition(int v) { this.position = v; }
 }
