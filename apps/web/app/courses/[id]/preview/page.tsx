@@ -34,6 +34,11 @@ export default function CoursePreviewPage() {
    *  slide behind a single "Start training" click so the whole chain
    *  plays afterwards. Set true once the learner has interacted. */
   const [audioUnlocked, setAudioUnlocked] = useState(false);
+  /** Has the narration on the current slide finished? Resets on every
+   *  slide change. The Next button is gated on this when the slide has
+   *  voiceOverText so learners can't fast-forward past content; for
+   *  slides without narration the per-slide timer governs instead. */
+  const [narrationDone, setNarrationDone] = useState(false);
   const startedRef = useRef<Set<string>>(new Set());
   const completedRef = useRef<Set<string>>(new Set());
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -165,24 +170,12 @@ export default function CoursePreviewPage() {
     return () => clearTimeout(t);
   }, [remaining, idx, done, slides.length]);
 
-  // In learner mode, slides WITHOUT narration auto-advance when the
-  // per-slide timer hits zero. Narrated slides advance on onEnded
-  // instead and ignore this hook.
+  // Reset the narration-complete flag every time the learner advances.
+  // Without this, clicking Next would carry the previous slide's "done"
+  // flag forward and the new slide's Next would be enabled immediately.
   useEffect(() => {
-    if (canEdit) return;
-    if (done || slides.length === 0) return;
-    if (remaining !== 0) return;
-    const current = slides[idx];
-    if (!current) return;
-    if (current.lesson.voiceOverText) return; // narration drives advance
-    if (!audioUnlocked && slides.some((s) => !!s.lesson.voiceOverText)) return;
-    const t = setTimeout(() => {
-      markLessonComplete(current.lesson.id);
-      if (idx >= slides.length - 1) setDone(true);
-      else setIdx((i) => i + 1);
-    }, 400);
-    return () => clearTimeout(t);
-  }, [canEdit, remaining, idx, slides, done, audioUnlocked, markLessonComplete]);
+    setNarrationDone(false);
+  }, [idx]);
 
   const goNext = useCallback(() => {
     if (slides.length === 0) return;
@@ -196,21 +189,15 @@ export default function CoursePreviewPage() {
     setIdx((i) => i + 1);
   }, [idx, remaining, slides, markLessonComplete]);
 
-  /** Auto-advance trigger from the SpeechPlayer — runs when the
-   *  narration finishes naturally. We bypass the per-slide timer in
-   *  learner mode so the chain plays end-to-end without manual clicks.
-   *  Admin/preview mode ignores this (their setting is the timer). */
+  /** Narration finished — unlock the Next button for the learner.
+   *  We never auto-advance: if we did, anyone who tabbed away or muted
+   *  the audio would still see the course "complete" on its own,
+   *  defeating the point of mandatory training. They have to click. */
   const onNarrationEnded = useCallback(() => {
-    if (canEdit) return;
-    if (slides.length === 0) return;
+    setNarrationDone(true);
     const current = slides[idx];
     if (current) markLessonComplete(current.lesson.id);
-    if (idx >= slides.length - 1) {
-      setDone(true);
-      return;
-    }
-    setIdx((i) => i + 1);
-  }, [canEdit, idx, slides, markLessonComplete]);
+  }, [idx, slides, markLessonComplete]);
 
   const goPrev = useCallback(() => {
     if (done) {
@@ -223,7 +210,16 @@ export default function CoursePreviewPage() {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "ArrowRight" || e.key === "Enter" || e.key === " ") {
-        if (remaining === 0) {
+        // Mirror the Next button gate so keyboard users can't skip
+        // ahead of narration / timer either.
+        const cur = slides[idx];
+        const hasVo = !!cur?.lesson?.voiceOverText?.trim();
+        const unlocked = canEdit
+          ? remaining === 0
+          : hasVo
+            ? narrationDone
+            : remaining === 0;
+        if (unlocked) {
           e.preventDefault();
           goNext();
         }
@@ -246,7 +242,7 @@ export default function CoursePreviewPage() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [goNext, goPrev, remaining, router, params.id, toggleFullscreen, canEdit]);
+  }, [goNext, goPrev, remaining, router, params.id, toggleFullscreen, canEdit, slides, idx, narrationDone]);
 
   if (err && !course) return <p className="text-sm text-red-400">{err}</p>;
   if (!course) return <p className="text-sm text-[var(--muted)]">Loading…</p>;
@@ -293,6 +289,25 @@ export default function CoursePreviewPage() {
 
   const slide = slides[idx];
   const pct = Math.round(((slide.slideNumber - 1) / slides.length) * 100);
+
+  // Next button gating:
+  //  - Admin/HR preview: only the timer matters.
+  //  - Learner with narration: must let the narration finish before
+  //    moving on, so they actually engage with the content.
+  //  - Learner without narration: per-slide timer applies (existing).
+  const hasVoiceOver = !!slide.lesson.voiceOverText?.trim();
+  const isNextUnlocked = canEdit
+    ? remaining === 0
+    : hasVoiceOver
+      ? narrationDone
+      : remaining === 0;
+  const nextLockedReason = !isNextUnlocked
+    ? hasVoiceOver && !canEdit
+      ? "Listen first…"
+      : remaining > 0
+        ? `Next in ${remaining}s`
+        : null
+    : null;
 
   return (
     <div
@@ -448,11 +463,12 @@ export default function CoursePreviewPage() {
         </div>
         <button
           onClick={goNext}
-          disabled={remaining > 0}
+          disabled={!isNextUnlocked}
           className="rounded bg-[var(--accent)] px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+          title={nextLockedReason ?? undefined}
         >
-          {remaining > 0
-            ? `Next in ${remaining}s`
+          {nextLockedReason
+            ? nextLockedReason
             : idx === slides.length - 1
               ? "Finish ✓"
               : "Next →"}
