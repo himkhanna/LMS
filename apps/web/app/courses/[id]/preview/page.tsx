@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import DOMPurify from "isomorphic-dompurify";
-import { API_BASE, Courses, Progress, type Course, type LessonDto } from "@/lib/api";
+import { API_BASE, Courses, Progress, type Course, type LessonDto, type LessonProgress } from "@/lib/api";
 import { getSession, hasRole } from "@/lib/auth";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { SpeechPlayer } from "@/components/SpeechPlayer";
@@ -28,6 +28,7 @@ export default function CoursePreviewPage() {
   const [remaining, setRemaining] = useState(PER_SLIDE_SECS);
   const [done, setDone] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [resumePrompt, setResumePrompt] = useState<{ idx: number; lessonTitle: string } | null>(null);
   const startedRef = useRef<Set<string>>(new Set());
   const completedRef = useRef<Set<string>>(new Set());
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -64,8 +65,52 @@ export default function CoursePreviewPage() {
       return;
     }
     Courses.get(params.id)
-      .then(setCourse)
+      .then((c) => {
+        setCourse(c);
+        // Seed resume state from existing progress so we don't double-
+        // emit markStarted / markCompleted, and so we can offer
+        // "Resume from Slide N" instead of dumping the learner at slide 1.
+        Progress.forCourse(params.id)
+          .then((items) => seedFromProgress(c, items))
+          .catch(() => {
+            // Non-fatal: no progress yet, or endpoint blip — just start fresh.
+          });
+      })
       .catch((e) => setErr(e instanceof Error ? e.message : "Failed to load"));
+
+    function seedFromProgress(c: Course, items: LessonProgress[]) {
+      const byLesson = new Map<string, LessonProgress>();
+      items.forEach((p) => byLesson.set(p.lessonId, p));
+      // Walk the course in slide order; collect the indexes of completed
+      // lessons (to skip re-marking) and find the first non-completed slot.
+      const ordered: { lessonId: string }[] = [];
+      c.modules.forEach((m) => m.lessons.forEach((l) => ordered.push({ lessonId: l.id })));
+      let resumeIdx = 0;
+      let lastCompletedIdx = -1;
+      for (let i = 0; i < ordered.length; i++) {
+        const p = byLesson.get(ordered[i].lessonId);
+        if (p?.status === "COMPLETED") {
+          completedRef.current.add(ordered[i].lessonId);
+          lastCompletedIdx = i;
+        }
+        if (p?.status === "STARTED") {
+          startedRef.current.add(ordered[i].lessonId);
+        }
+      }
+      // Resume = first not-yet-completed slide. If everything's done,
+      // land on the final slide (the "Finish" CTA).
+      resumeIdx = ordered.findIndex(
+        (s) => byLesson.get(s.lessonId)?.status !== "COMPLETED",
+      );
+      if (resumeIdx === -1) resumeIdx = ordered.length - 1;
+      // Only prompt the learner if they actually have progress worth
+      // resuming — first launch goes straight to slide 1.
+      if (lastCompletedIdx >= 0 && resumeIdx > 0) {
+        const lessonTitle =
+          c.modules.flatMap((m) => m.lessons)[resumeIdx]?.title ?? `Slide ${resumeIdx + 1}`;
+        setResumePrompt({ idx: resumeIdx, lessonTitle });
+      }
+    }
   }, [params.id, router]);
 
   const slides = useMemo<Slide[]>(() => {
@@ -218,6 +263,48 @@ export default function CoursePreviewPage() {
           : "mx-auto flex min-h-[calc(100vh-10rem)] max-w-3xl flex-col gap-6 py-4"
       }
     >
+      {resumePrompt ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--panel)] p-6 shadow-xl">
+            <h2 className="text-lg font-semibold">Pick up where you left off?</h2>
+            <p className="mt-2 text-sm text-[var(--muted)]">
+              You stopped at <b className="text-[var(--text)]">slide {resumePrompt.idx + 1}</b>
+              {resumePrompt.lessonTitle ? (
+                <>
+                  {" — "}<i>{resumePrompt.lessonTitle}</i>
+                </>
+              ) : null}
+              . Your progress is saved automatically as you go.
+            </p>
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <button
+                onClick={() => {
+                  setIdx(0);
+                  setResumePrompt(null);
+                }}
+                className="btn-secondary"
+              >
+                Start over
+              </button>
+              <button
+                onClick={() => {
+                  setIdx(resumePrompt.idx);
+                  setResumePrompt(null);
+                }}
+                className="rounded bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--accent-hover)]"
+                autoFocus
+              >
+                Resume from slide {resumePrompt.idx + 1}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs text-[var(--muted)]">
           <span>
