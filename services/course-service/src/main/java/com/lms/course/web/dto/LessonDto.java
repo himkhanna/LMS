@@ -13,7 +13,8 @@ public record LessonDto(
         int position,
         Integer durationSecs,
         String videoUrl,
-        String videoProvider
+        String videoProvider,
+        String voiceOverText
 ) {
     public static LessonDto from(Lesson l) {
         return new LessonDto(
@@ -25,7 +26,8 @@ public record LessonDto(
                 l.getPosition(),
                 l.getDurationSecs(),
                 l.getVideoUrl(),
-                l.getVideoProvider()
+                l.getVideoProvider(),
+                l.getVoiceOverText()
         );
     }
 }

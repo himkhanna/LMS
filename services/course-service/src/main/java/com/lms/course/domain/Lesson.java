@@ -38,6 +38,11 @@ public class Lesson {
     @Column(name = "video_provider", length = 32)
     private String videoProvider;
 
+    /** Optional narration script read aloud in the slideshow viewer via
+     *  the browser's SpeechSynthesis API. */
+    @Column(name = "voice_over_text", columnDefinition = "text")
+    private String voiceOverText;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -73,6 +78,10 @@ public class Lesson {
         this.videoProvider = classify(this.videoUrl);
     }
     public String getVideoProvider() { return videoProvider; }
+    public String getVoiceOverText() { return voiceOverText; }
+    public void setVoiceOverText(String voiceOverText) {
+        this.voiceOverText = voiceOverText == null || voiceOverText.isBlank() ? null : voiceOverText;
+    }
 
     /**
      * Classify a URL so the SPA renders the right player. We never store

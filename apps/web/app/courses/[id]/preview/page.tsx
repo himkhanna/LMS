@@ -7,6 +7,7 @@ import DOMPurify from "isomorphic-dompurify";
 import { API_BASE, Courses, Progress, type Course, type LessonDto } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { SpeechPlayer } from "@/components/SpeechPlayer";
 
 const PER_SLIDE_SECS = 15;
 
@@ -194,6 +195,14 @@ export default function CoursePreviewPage() {
 
       <div className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-8 shadow-sm">
         <h1 className="text-3xl font-semibold leading-tight">{slide.lesson.title}</h1>
+        {slide.lesson.voiceOverText ? (
+          <div className="mt-3">
+            <SpeechPlayer
+              text={slide.lesson.voiceOverText}
+              scopeKey={slide.lesson.id}
+            />
+          </div>
+        ) : null}
         {slide.lesson.videoUrl ? (
           <div className="mt-4">
             <VideoPlayer

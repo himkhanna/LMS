@@ -18,6 +18,7 @@ export default function LessonDetailPage() {
   const [content, setContent] = useState("");
   const [duration, setDuration] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
+  const [voiceOver, setVoiceOver] = useState("");
   const [savedHash, setSavedHash] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
@@ -31,7 +32,10 @@ export default function LessonDetailPage() {
       setContent(l.content ?? "");
       setDuration(l.durationSecs ? String(l.durationSecs) : "");
       setVideoUrl(l.videoUrl ?? "");
-      setSavedHash(hashState(l.title, l.content ?? "", l.durationSecs, l.videoUrl ?? ""));
+      setVoiceOver(l.voiceOverText ?? "");
+      setSavedHash(
+        hashState(l.title, l.content ?? "", l.durationSecs, l.videoUrl ?? "", l.voiceOverText ?? ""),
+      );
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Failed to load");
     }
@@ -47,7 +51,7 @@ export default function LessonDetailPage() {
   }, [params.id, router]);
 
   const dirty = lesson
-    ? hashState(title, content, duration ? Number(duration) : null, videoUrl) !== savedHash
+    ? hashState(title, content, duration ? Number(duration) : null, videoUrl, voiceOver) !== savedHash
     : false;
 
   async function save() {
@@ -60,9 +64,18 @@ export default function LessonDetailPage() {
         content,
         durationSecs: duration ? Number(duration) : undefined,
         videoUrl: videoUrl.trim() === "" ? null : videoUrl.trim(),
+        voiceOverText: voiceOver.trim() === "" ? null : voiceOver,
       });
       setLesson(next);
-      setSavedHash(hashState(next.title, next.content ?? "", next.durationSecs, next.videoUrl ?? ""));
+      setSavedHash(
+        hashState(
+          next.title,
+          next.content ?? "",
+          next.durationSecs,
+          next.videoUrl ?? "",
+          next.voiceOverText ?? "",
+        ),
+      );
       setSavedAt(new Date());
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Save failed");
@@ -130,6 +143,46 @@ export default function LessonDetailPage() {
         <RichTextEditor value={content} onChange={setContent} />
       </div>
 
+      <section className="space-y-2">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <label className="text-sm">
+            <span className="font-medium">🔊 Voiceover script</span>
+            <span className="ml-1 text-xs text-[var(--muted)]">
+              Read aloud in the slideshow viewer via the browser&apos;s text-to-speech. Leave blank to skip narration.
+            </span>
+          </label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setVoiceOver(stripHtml(content).trim())}
+              className="btn-mini"
+              title="Copy the plain text of the lesson content into the script"
+            >
+              ⇣ from content
+            </button>
+            {voiceOver ? (
+              <button
+                type="button"
+                onClick={() => setVoiceOver("")}
+                className="btn-mini btn-mini-danger"
+              >
+                Clear
+              </button>
+            ) : null}
+          </div>
+        </div>
+        <textarea
+          value={voiceOver}
+          onChange={(e) => setVoiceOver(e.target.value)}
+          rows={Math.min(10, Math.max(3, voiceOver.split("\n").length + 1))}
+          placeholder="e.g. Welcome to lesson one. Today we'll look at how phishing attacks start with a single careless click…"
+          className="w-full rounded border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm"
+        />
+        <p className="text-xs text-[var(--muted)]">
+          {voiceOver.trim() ? `${voiceOver.trim().split(/\s+/).length} words · ~${Math.round(voiceOver.trim().split(/\s+/).length / 2.5)}s at 1× speed` : "Empty — no narration on this slide."}
+        </p>
+      </section>
+
       {err ? <p className="text-sm text-red-400">{err}</p> : null}
 
       <section className="space-y-3">
@@ -156,8 +209,28 @@ function hashState(
   content: string,
   durationSecs: number | null,
   videoUrl: string,
+  voiceOver: string,
 ): string {
-  return `${title} ${content} ${durationSecs ?? ""} ${videoUrl}`;
+  return `${title} ${content} ${durationSecs ?? ""} ${videoUrl} ${voiceOver}`;
+}
+
+/** Quick HTML→text for the "Copy from content" button. */
+function stripHtml(html: string): string {
+  if (!html) return "";
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<br\s*\/?\s*>/gi, "\n")
+    .replace(/<\/(p|div|li|h[1-6]|tr|td|th)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function UploadForm({ lessonId, onUploaded }: { lessonId: string; onUploaded: () => void }) {

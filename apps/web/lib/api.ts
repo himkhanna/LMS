@@ -241,6 +241,7 @@ export type LessonDto = {
   durationSecs: number | null;
   videoUrl?: string | null;
   videoProvider?: "YOUTUBE" | "VIMEO" | "FILE" | "URL" | null;
+  voiceOverText?: string | null;
 };
 
 export type Course = {
@@ -514,7 +515,13 @@ export const Lessons = {
     }),
   update: (
     id: string,
-    patch: { title?: string; content?: string; durationSecs?: number; videoUrl?: string | null },
+    patch: {
+      title?: string;
+      content?: string;
+      durationSecs?: number;
+      videoUrl?: string | null;
+      voiceOverText?: string | null;
+    },
   ) =>
     api<LessonDto>(`/api/v1/lessons/${id}`, {
       method: "PATCH",

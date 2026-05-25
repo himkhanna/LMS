@@ -4,5 +4,6 @@ public record UpdateLessonRequest(
         String title,
         String content,
         Integer durationSecs,
-        String videoUrl
+        String videoUrl,
+        String voiceOverText
 ) {}

@@ -78,6 +78,13 @@ public class SlideshowCourseService {
                 l.setTitle(lessonTitle(s, j + 1));
                 l.setContent(lessonHtml(key, s));
                 l.setDurationSecs(duration);
+                // Seed the voice-over with the deck's speaker notes when
+                // available — HR can edit later. If notes are absent we
+                // leave it null so the player doesn't read raw slide text
+                // which is usually fragmented.
+                if (s != null && s.notes() != null && !s.notes().isBlank()) {
+                    l.setVoiceOverText(s.notes().strip());
+                }
                 m.addLesson(l);
             }
         }
