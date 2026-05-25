@@ -203,6 +203,7 @@ export default function CourseDetailPage() {
       ) : null}
 
       {canAssign ? <CourseSettingsPanel course={course} onChange={reload} /> : null}
+      {canAssign ? <SlidePacingControl course={course} onChange={reload} /> : null}
 
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Modules</h2>
@@ -241,6 +242,86 @@ export default function CourseDetailPage() {
         onAssigned={() => reloadEnrollments()}
       />
     </div>
+  );
+}
+
+function SlidePacingControl({
+  course,
+  onChange,
+}: {
+  course: Course;
+  onChange: () => void;
+}) {
+  // Default the field to whatever the most-common lesson duration is, so
+  // HR sees what the current pacing actually is.
+  const counts = new Map<number, number>();
+  for (const m of course.modules) {
+    for (const l of m.lessons) {
+      const d = l.durationSecs ?? 0;
+      if (d <= 0) continue;
+      counts.set(d, (counts.get(d) ?? 0) + 1);
+    }
+  }
+  let mode = 30;
+  let max = 0;
+  for (const [d, c] of counts) {
+    if (c > max) {
+      max = c;
+      mode = d;
+    }
+  }
+  const [secs, setSecs] = useState(String(mode));
+  const [busy, setBusy] = useState(false);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+
+  async function save() {
+    const n = Number(secs);
+    if (!Number.isFinite(n) || n <= 0) return;
+    if (
+      !confirm(
+        `Set every lesson in this course to ${n} seconds? Each learner will have to spend at least that long on each slide before "Next" unlocks. You can still tweak individual lessons afterwards.`,
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      await Courses.setAllLessonDurations(course.id, n);
+      setSavedAt(new Date());
+      onChange();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="flex flex-wrap items-end gap-3 rounded-lg border border-[var(--border)] bg-[var(--panel)] p-3 shadow-sm">
+      <div>
+        <h2 className="text-sm font-semibold">Slide pacing</h2>
+        <p className="text-xs text-[var(--muted)]">
+          How long each slide must show before the learner can advance. Applies
+          to every lesson in this course.
+        </p>
+      </div>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="number"
+          min="1"
+          max="3600"
+          value={secs}
+          onChange={(e) => setSecs(e.target.value)}
+          className="input w-20"
+        />
+        <span className="text-xs text-[var(--muted)]">seconds / slide</span>
+      </label>
+      <button onClick={save} disabled={busy} className="btn-secondary">
+        {busy ? "Applying…" : "Apply to all slides"}
+      </button>
+      {savedAt ? (
+        <span className="text-xs text-[var(--muted)]">
+          Updated {savedAt.toLocaleTimeString()}
+        </span>
+      ) : null}
+    </section>
   );
 }
 

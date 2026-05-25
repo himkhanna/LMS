@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,6 +18,11 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Listing endpoints are annotated @Transactional so the Hibernate session
+ * stays open while EnrollmentDto.from() touches the lazy Enrollment.course
+ * association (spring.jpa.open-in-view is false).
+ */
 @RestController
 @RequestMapping("/api/v1")
 public class EnrollmentController {
@@ -44,6 +50,7 @@ public class EnrollmentController {
 
     @GetMapping("/courses/{courseId}/enrollments")
     @PreAuthorize("hasAnyRole('ADMIN','HR','INSTRUCTOR')")
+    @Transactional(readOnly = true)
     public List<EnrollmentDto> listForCourse(@PathVariable UUID courseId,
                                              @RequestParam(required = false) EnrollmentStatus status) {
         return service.listForCourse(courseId, status).stream()
@@ -60,6 +67,7 @@ public class EnrollmentController {
 
     @PostMapping("/enrollments/{id}/waive")
     @PreAuthorize("hasAnyRole('ADMIN','HR')")
+    @Transactional
     public EnrollmentDto waive(@PathVariable UUID id) {
         return EnrollmentDto.from(service.waive(id));
     }
@@ -84,6 +92,7 @@ public class EnrollmentController {
     // ---- Learner-facing ----
 
     @GetMapping("/me/enrollments")
+    @Transactional(readOnly = true)
     public List<EnrollmentDto> myEnrollments(@RequestParam(required = false) EnrollmentStatus status,
                                              @AuthenticationPrincipal Jwt jwt) {
         UUID userId = currentUserId(jwt);

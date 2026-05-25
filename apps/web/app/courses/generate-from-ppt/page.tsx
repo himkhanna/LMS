@@ -16,6 +16,7 @@ export default function GenerateFromPptPage() {
   const [audience, setAudience] = useState("");
   const [moduleCount, setModuleCount] = useState("3");
   const [lessonsPerModule, setLessonsPerModule] = useState("4");
+  const [secsPerSlide, setSecsPerSlide] = useState("30");
   const [model, setModel] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -39,6 +40,7 @@ export default function GenerateFromPptPage() {
           file,
           topic: topic.trim() || undefined,
           slidesPerModule: Number(lessonsPerModule) || undefined,
+          secsPerSlide: Number(secsPerSlide) || undefined,
         });
         router.push(`/courses/${course.id}`);
       } else if (isDesigner) {
@@ -230,6 +232,23 @@ export default function GenerateFromPptPage() {
               className="w-24 rounded border border-[var(--border)] bg-[var(--panel)] px-3 py-2"
             />
           </label>
+          {isSlideshow ? (
+            <label className="block">
+              <span className="block pb-1 text-[var(--muted)]">Seconds per slide</span>
+              <input
+                type="number"
+                min="1"
+                max="3600"
+                value={secsPerSlide}
+                onChange={(e) => setSecsPerSlide(e.target.value)}
+                className="w-24 rounded border border-[var(--border)] bg-[var(--panel)] px-3 py-2"
+              />
+              <span className="mt-1 block text-xs text-[var(--muted)]">
+                How long each slide must show before <i>Next</i> unlocks. You
+                can re-tune this on the course page after upload.
+              </span>
+            </label>
+          ) : null}
         </div>
 
         {isAi ? (

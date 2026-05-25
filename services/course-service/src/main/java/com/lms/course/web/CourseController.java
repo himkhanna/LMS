@@ -67,6 +67,23 @@ public class CourseController {
                 .body(LessonDto.from(l));
     }
 
+    public record BulkDurationRequest(Integer secs) {}
+
+    /**
+     * Set the same per-slide duration on every lesson in the course.
+     * Used by HR to tune the slideshow "Next in Ns" gate after upload.
+     * Lesson-by-lesson tweaks are still available via /lessons/{id}.
+     */
+    @PostMapping("/{id}/lessons/bulk-duration")
+    public ResponseEntity<Void> setBulkDuration(@PathVariable UUID id,
+                                                @RequestBody BulkDurationRequest req) {
+        if (req == null || req.secs() == null || req.secs() <= 0) {
+            throw new IllegalArgumentException("secs must be a positive integer");
+        }
+        service.setAllLessonDurations(id, req.secs());
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/{id}/publish")
     public CourseDto publish(@PathVariable UUID id) {
         return CourseDto.from(service.publish(id));

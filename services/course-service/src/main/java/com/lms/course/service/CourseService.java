@@ -92,6 +92,21 @@ public class CourseService {
         return l;
     }
 
+    /**
+     * Apply the same per-slide duration to every lesson in the course.
+     * Idempotent. Used by HR to tune the "Next in Ns" gate in the
+     * slideshow viewer in one click instead of opening each lesson.
+     */
+    public void setAllLessonDurations(UUID courseId, int secs) {
+        Course c = get(courseId);
+        int clamped = Math.max(1, Math.min(3600, secs));
+        for (var m : c.getModules()) {
+            for (var l : m.getLessons()) {
+                l.setDurationSecs(clamped);
+            }
+        }
+    }
+
     public Course publish(UUID id) {
         Course c = get(id);
         if (c.getStatus() == CourseStatus.PUBLISHED) {

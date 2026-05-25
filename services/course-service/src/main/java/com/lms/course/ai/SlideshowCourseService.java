@@ -25,7 +25,7 @@ import java.util.UUID;
 @Transactional
 public class SlideshowCourseService {
 
-    private static final int DEFAULT_LESSON_DURATION_SECS = 90;
+    private static final int DEFAULT_LESSON_DURATION_SECS = 30;
 
     private final CourseRepository courses;
     private final ObjectStorage storage;
@@ -38,11 +38,13 @@ public class SlideshowCourseService {
     public Course build(String courseTitle,
                         List<ExtractedSlide> extracted,
                         List<RenderedSlide> rendered,
-                        Integer slidesPerModule) {
+                        Integer slidesPerModule,
+                        Integer secsPerSlide) {
         if (rendered == null || rendered.isEmpty()) {
             throw new IllegalArgumentException("Deck contains no renderable slides");
         }
         int chunkSize = (slidesPerModule != null && slidesPerModule > 0) ? slidesPerModule : 5;
+        int duration = (secsPerSlide != null && secsPerSlide > 0) ? secsPerSlide : DEFAULT_LESSON_DURATION_SECS;
         int slideCount = rendered.size();
         boolean haveText = extracted != null && !extracted.isEmpty();
 
@@ -75,7 +77,7 @@ public class SlideshowCourseService {
                 Lesson l = new Lesson();
                 l.setTitle(lessonTitle(s, j + 1));
                 l.setContent(lessonHtml(key, s));
-                l.setDurationSecs(DEFAULT_LESSON_DURATION_SECS);
+                l.setDurationSecs(duration);
                 m.addLesson(l);
             }
         }

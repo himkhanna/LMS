@@ -118,7 +118,8 @@ public class CourseGenerationController {
     public ResponseEntity<CourseDto> renderFromFile(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "topic", required = false) String topic,
-            @RequestParam(value = "slidesPerModule", required = false) Integer slidesPerModule) {
+            @RequestParam(value = "slidesPerModule", required = false) Integer slidesPerModule,
+            @RequestParam(value = "secsPerSlide", required = false) Integer secsPerSlide) {
         if (file == null || file.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
@@ -144,7 +145,7 @@ public class CourseGenerationController {
             throw new IllegalArgumentException("Deck contains no renderable slides");
         }
         String effectiveTopic = (topic == null || topic.isBlank()) ? stripExtension(name) : topic;
-        var course = slideshow.build(effectiveTopic, extracted, rendered, slidesPerModule);
+        var course = slideshow.build(effectiveTopic, extracted, rendered, slidesPerModule, secsPerSlide);
         return ResponseEntity
                 .created(URI.create("/api/v1/courses/" + course.getId()))
                 .body(CourseDto.from(course));

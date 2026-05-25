@@ -299,6 +299,11 @@ export const Courses = {
     api<Course>(`/api/v1/courses`, { method: "POST", body: input }),
   update: (id: string, patch: CourseUpdatePatch) =>
     api<Course>(`/api/v1/courses/${id}`, { method: "PATCH", body: patch }),
+  setAllLessonDurations: (id: string, secs: number) =>
+    api<void>(`/api/v1/courses/${id}/lessons/bulk-duration`, {
+      method: "POST",
+      body: { secs },
+    }),
   publish: (id: string) =>
     api<Course>(`/api/v1/courses/${id}/publish`, { method: "POST" }),
   unpublish: (id: string) =>
@@ -843,11 +848,17 @@ export const PptDesigner = {
    * Render every slide of a .pptx to a PNG and create a course where each
    * lesson displays the actual visual slide (rather than extracted text).
    */
-  renderFromFile: (input: { file: File; topic?: string; slidesPerModule?: number }) => {
+  renderFromFile: (input: {
+    file: File;
+    topic?: string;
+    slidesPerModule?: number;
+    secsPerSlide?: number;
+  }) => {
     const fd = new FormData();
     fd.append("file", input.file);
     if (input.topic) fd.append("topic", input.topic);
     if (input.slidesPerModule != null) fd.append("slidesPerModule", String(input.slidesPerModule));
+    if (input.secsPerSlide != null) fd.append("secsPerSlide", String(input.secsPerSlide));
     return api<Course>(`/api/v1/courses/render-from-file`, {
       method: "POST",
       body: fd,
