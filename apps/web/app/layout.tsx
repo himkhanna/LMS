@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { SessionMenu } from "@/components/SessionMenu";
 import { InboxBell } from "@/components/InboxBell";
+import { AppNav } from "@/components/AppNav";
 
 export const metadata: Metadata = {
   title: "IDC Digital — Learning Platform",
@@ -29,31 +30,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 Learning Platform
               </span>
             </Link>
-            <nav className="flex items-center gap-5 text-sm">
-              <Link href="/my-learning" className="hover:text-[var(--header-accent)]">
-                My Learning
-              </Link>
-              <Link href="/team" className="hover:text-[var(--header-accent)]">
-                My Team
-              </Link>
-              <Link href="/catalog" className="hover:text-[var(--header-accent)]">
-                Catalog
-              </Link>
-              <Link href="/courses" className="hover:text-[var(--header-accent)]">
-                Courses
-              </Link>
-              <Link href="/learning-paths" className="hover:text-[var(--header-accent)]">
-                Paths
-              </Link>
-              <Link href="/reports" className="hover:text-[var(--header-accent)]">
-                Reports
-              </Link>
-              <Link href="/admin/users" className="hover:text-[var(--header-accent)]">
-                Admin
-              </Link>
+            <div className="flex flex-wrap items-center gap-5 text-sm">
+              <AppNav />
               <InboxBell />
               <SessionMenu />
-            </nav>
+            </div>
           </div>
         </header>
         <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>

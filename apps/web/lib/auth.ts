@@ -3,6 +3,17 @@
 const TOKEN_KEY = "lms.jwt";
 const USER_KEY = "lms.user";
 
+/** Same-tab notification when the session changes. The 'storage' DOM
+ *  event only fires in OTHER tabs, so without this the header (Sign
+ *  in button, nav links) doesn't react when you log in or out in the
+ *  same tab. */
+export const SESSION_CHANGED_EVENT = "lms:session-changed";
+
+function emitChange() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(SESSION_CHANGED_EVENT));
+}
+
 export type Session = {
   token: string;
   userId: string;
@@ -47,6 +58,7 @@ export function saveSession(token: string, fallbackEmail?: string) {
   };
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USER_KEY, JSON.stringify(session));
+  emitChange();
 }
 
 export function getSession(): Session | null {
@@ -70,6 +82,7 @@ export function clearSession() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  emitChange();
 }
 
 export function hasRole(role: string): boolean {

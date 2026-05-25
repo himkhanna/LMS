@@ -3,17 +3,26 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { clearSession, getSession, type Session } from "@/lib/auth";
+import { clearSession, getSession, SESSION_CHANGED_EVENT, type Session } from "@/lib/auth";
 
 export function SessionMenu() {
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setSession(getSession());
-    const onStorage = () => setSession(getSession());
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    function load() {
+      setSession(getSession());
+    }
+    load();
+    setHydrated(true);
+    // 'storage' fires in OTHER tabs; the custom event covers same-tab.
+    window.addEventListener("storage", load);
+    window.addEventListener(SESSION_CHANGED_EVENT, load);
+    return () => {
+      window.removeEventListener("storage", load);
+      window.removeEventListener(SESSION_CHANGED_EVENT, load);
+    };
   }, []);
 
   function signOut() {
@@ -21,6 +30,9 @@ export function SessionMenu() {
     setSession(null);
     router.push("/login");
   }
+
+  // Avoid a Sign-in/Sign-out flash before localStorage hydrates.
+  if (!hydrated) return <span />;
 
   if (!session) {
     return (
