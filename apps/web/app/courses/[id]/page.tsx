@@ -79,6 +79,13 @@ export default function CourseDetailPage() {
       router.push("/login");
       return;
     }
+    // /courses/{id} is the admin authoring view — modules editor, delete
+    // buttons, assignment roster. Bouncing learners off it so they don't
+    // see "Unpublish / Delete" or the bare slide list.
+    if (!hasRole("ROLE_ADMIN") && !hasRole("ROLE_HR") && !hasRole("ROLE_INSTRUCTOR")) {
+      router.replace(`/courses/${params.id}/preview`);
+      return;
+    }
     reload();
     reloadEnrollments();
     reloadQuizzes();

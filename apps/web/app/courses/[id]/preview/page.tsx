@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import DOMPurify from "isomorphic-dompurify";
-import { API_BASE, Courses, Progress, type Course, type LessonDto, type LessonProgress } from "@/lib/api";
+import { API_BASE, Courses, Progress, Quizzes, type Course, type LessonDto, type LessonProgress, type Quiz } from "@/lib/api";
 import { getSession, hasRole } from "@/lib/auth";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { SpeechPlayer } from "@/components/SpeechPlayer";
@@ -23,6 +23,7 @@ export default function CoursePreviewPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const [course, setCourse] = useState<Course | null>(null);
+  const [courseQuizzes, setCourseQuizzes] = useState<Quiz[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [idx, setIdx] = useState(0);
   const [remaining, setRemaining] = useState(PER_SLIDE_SECS);
@@ -74,6 +75,11 @@ export default function CoursePreviewPage() {
       router.push("/login");
       return;
     }
+    Quizzes.listForCourse(params.id)
+      .then((qs) => setCourseQuizzes(qs.filter((q) => q.status === "PUBLISHED")))
+      .catch(() => {
+        // Non-fatal — show the slides without a quiz CTA.
+      });
     Courses.get(params.id)
       .then((c) => {
         setCourse(c);
@@ -107,12 +113,17 @@ export default function CoursePreviewPage() {
           startedRef.current.add(ordered[i].lessonId);
         }
       }
-      // Resume = first not-yet-completed slide. If everything's done,
-      // land on the final slide (the "Finish" CTA).
-      resumeIdx = ordered.findIndex(
+      const firstIncomplete = ordered.findIndex(
         (s) => byLesson.get(s.lessonId)?.status !== "COMPLETED",
       );
-      if (resumeIdx === -1) resumeIdx = ordered.length - 1;
+      if (firstIncomplete === -1) {
+        // Every slide is already done — skip the slideshow entirely and
+        // land on the completion screen so the learner sees the quiz CTAs
+        // (or certificate) without flipping through 38 slides again.
+        setDone(true);
+        return;
+      }
+      resumeIdx = firstIncomplete;
       // Only prompt the learner if they actually have progress worth
       // resuming — first launch goes straight to slide 1.
       if (lastCompletedIdx >= 0 && resumeIdx > 0) {
@@ -258,15 +269,60 @@ export default function CoursePreviewPage() {
   }
 
   if (done) {
+    const hasQuizzes = courseQuizzes.length > 0;
     return (
-      <div className="mx-auto max-w-2xl space-y-6 py-12 text-center">
-        <div className="text-5xl">✓</div>
-        <h1 className="text-3xl font-semibold">Course complete</h1>
-        <p className="text-[var(--muted)]">
-          You finished <span className="font-medium text-[var(--text)]">{course.title}</span> ·{" "}
-          {slides.length} lesson{slides.length === 1 ? "" : "s"}.
-        </p>
-        <div className="flex justify-center gap-3 pt-2">
+      <div className="mx-auto max-w-2xl space-y-6 py-12">
+        <div className="text-center">
+          <div className="text-5xl">✓</div>
+          <h1 className="mt-2 text-3xl font-semibold">Slides complete</h1>
+          <p className="mt-2 text-[var(--muted)]">
+            You worked through <span className="font-medium text-[var(--text)]">{course.title}</span>
+            {" "}— {slides.length} slide{slides.length === 1 ? "" : "s"}.
+            {hasQuizzes ? (
+              <>
+                {" "}
+                <span className="block pt-2 text-[var(--text)]">
+                  One step left — take the {courseQuizzes.length === 1 ? "quiz" : "quizzes"} below to finish the course.
+                </span>
+              </>
+            ) : (
+              " You're all done. 🎉"
+            )}
+          </p>
+        </div>
+
+        {hasQuizzes ? (
+          <section className="space-y-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
+              {courseQuizzes.length === 1 ? "Quiz" : "Quizzes"}
+            </h2>
+            <ul className="space-y-2">
+              {courseQuizzes.map((q) => (
+                <li
+                  key={q.id}
+                  className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--panel)] p-4 shadow-sm"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium">{q.title}</div>
+                    <div className="text-xs text-[var(--muted)]">
+                      {q.totalQuestions} question{q.totalQuestions === 1 ? "" : "s"} ·{" "}
+                      Pass {q.passScore}%
+                      {q.timeLimitMins ? ` · ${q.timeLimitMins} min limit` : ""}
+                    </div>
+                  </div>
+                  <Link
+                    href={`/quizzes/${q.id}/take`}
+                    className="rounded bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--accent-hover)]"
+                  >
+                    Take quiz →
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        <div className="flex flex-wrap justify-center gap-3">
           <button
             onClick={() => {
               setIdx(0);
@@ -274,13 +330,13 @@ export default function CoursePreviewPage() {
             }}
             className="rounded border border-[var(--border)] px-4 py-2 text-sm hover:bg-[var(--panel)]"
           >
-            Restart
+            Restart slides
           </button>
           <Link
-            href={`/courses/${course.id}`}
-            className="rounded bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white"
+            href={canEdit ? `/courses/${course.id}` : "/my-learning"}
+            className="rounded bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--accent-hover)]"
           >
-            Back to course
+            {canEdit ? "Back to course" : "← My Learning"}
           </Link>
         </div>
       </div>

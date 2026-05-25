@@ -6,10 +6,12 @@ import Link from "next/link";
 import { Assets, Lessons, type AssetDto, type LessonDto } from "@/lib/api";
 import { getSession } from "@/lib/auth";
 import { RichTextEditor } from "@/components/RichTextEditor";
+import { useRequireRole } from "@/lib/useRequireRole";
 
 export default function LessonDetailPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
+  const gate = useRequireRole(["ROLE_ADMIN", "ROLE_HR", "ROLE_INSTRUCTOR"]);
   const [lesson, setLesson] = useState<LessonDto | null>(null);
   const [assets, setAssets] = useState<AssetDto[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -42,13 +44,10 @@ export default function LessonDetailPage() {
   }
 
   useEffect(() => {
-    if (!getSession()) {
-      router.push("/login");
-      return;
-    }
+    if (gate !== "allowed") return;
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id, router]);
+  }, [params.id, gate]);
 
   const dirty = lesson
     ? hashState(title, content, duration ? Number(duration) : null, videoUrl, voiceOver) !== savedHash
@@ -84,6 +83,7 @@ export default function LessonDetailPage() {
     }
   }
 
+  if (gate !== "allowed") return <p className="text-sm text-[var(--muted)]">Loading…</p>;
   if (err && !lesson) return <p className="text-sm text-red-400">{err}</p>;
   if (!lesson) return <p className="text-sm text-[var(--muted)]">Loading…</p>;
 

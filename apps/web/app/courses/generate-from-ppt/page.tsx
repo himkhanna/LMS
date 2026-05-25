@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AiCourses, PptDesigner, type ProposedCourse } from "@/lib/api";
 import { CourseDesigner } from "@/components/CourseDesigner";
+import { useRequireRole } from "@/lib/useRequireRole";
 
 type Mode = "ai" | "designer" | "slideshow";
 
 export default function GenerateFromPptPage() {
   const router = useRouter();
+  const gate = useRequireRole(["ROLE_ADMIN", "ROLE_HR", "ROLE_INSTRUCTOR"]);
   const [file, setFile] = useState<File | null>(null);
   const [mode, setMode] = useState<Mode>("slideshow");
   const [topic, setTopic] = useState("");
@@ -79,6 +81,10 @@ export default function GenerateFromPptPage() {
       setErr(e instanceof Error ? e.message : "Could not create course");
       setBusy(false);
     }
+  }
+
+  if (gate !== "allowed") {
+    return <p className="text-sm text-[var(--muted)]">Loading…</p>;
   }
 
   if (proposed) {

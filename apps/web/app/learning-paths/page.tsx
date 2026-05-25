@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LearningPaths, type LearningPath } from "@/lib/api";
 import { getSession, hasRole } from "@/lib/auth";
+import { useRequireRole } from "@/lib/useRequireRole";
 
 export default function LearningPathsListPage() {
   const router = useRouter();
+  const gate = useRequireRole(["ROLE_ADMIN", "ROLE_HR", "ROLE_INSTRUCTOR"]);
   const [paths, setPaths] = useState<LearningPath[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -17,13 +19,10 @@ export default function LearningPathsListPage() {
     hasRole("ROLE_ADMIN") || hasRole("ROLE_HR") || hasRole("ROLE_INSTRUCTOR");
 
   useEffect(() => {
-    if (!getSession()) {
-      router.push("/login");
-      return;
-    }
+    if (gate !== "allowed") return;
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]);
+  }, [gate]);
 
   async function reload() {
     setErr(null);
@@ -45,6 +44,10 @@ export default function LearningPathsListPage() {
       setErr(err instanceof Error ? err.message : "Could not create");
       setCreating(false);
     }
+  }
+
+  if (gate !== "allowed") {
+    return <p className="text-sm text-[var(--muted)]">Loading…</p>;
   }
 
   return (

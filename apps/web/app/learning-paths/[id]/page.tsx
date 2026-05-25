@@ -14,6 +14,7 @@ import {
   type PathAssignment,
 } from "@/lib/api";
 import { getSession, hasRole } from "@/lib/auth";
+import { useRequireRole } from "@/lib/useRequireRole";
 
 type PathUpdatePayload = {
   title?: string;
@@ -33,19 +34,17 @@ export default function LearningPathDetailPage() {
   const [busy, setBusy] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
 
+  const gate = useRequireRole(["ROLE_ADMIN", "ROLE_HR", "ROLE_INSTRUCTOR"]);
   const canAuthor =
     hasRole("ROLE_ADMIN") || hasRole("ROLE_HR") || hasRole("ROLE_INSTRUCTOR");
   const canAssign = hasRole("ROLE_ADMIN") || hasRole("ROLE_HR");
 
   useEffect(() => {
-    if (!getSession()) {
-      router.push("/login");
-      return;
-    }
+    if (gate !== "allowed") return;
     reload();
     if (canAuthor) reloadRoster();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id, router]);
+  }, [params.id, gate]);
 
   async function reload() {
     setErr(null);
@@ -133,6 +132,7 @@ export default function LearningPathDetailPage() {
     }
   }
 
+  if (gate !== "allowed") return <p className="text-sm text-[var(--muted)]">Loading…</p>;
   if (err && !path) return <p className="text-sm text-[var(--danger)]">{err}</p>;
   if (!path) return <p className="text-sm text-[var(--muted)]">Loading…</p>;
 

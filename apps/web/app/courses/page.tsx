@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Courses, type Course, type CourseStatus } from "@/lib/api";
 import { getSession } from "@/lib/auth";
+import { useRequireRole } from "@/lib/useRequireRole";
 
 const STATUS_CHIPS: Record<CourseStatus, string> = {
   DRAFT: "chip chip-muted",
@@ -14,20 +15,22 @@ const STATUS_CHIPS: Record<CourseStatus, string> = {
 
 export default function CoursesPage() {
   const router = useRouter();
+  const gate = useRequireRole(["ROLE_ADMIN", "ROLE_HR", "ROLE_INSTRUCTOR"]);
   const [courses, setCourses] = useState<Course[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<CourseStatus | "">("");
 
   useEffect(() => {
-    if (!getSession()) {
-      router.push("/login");
-      return;
-    }
+    if (gate !== "allowed") return;
     Courses.list({ size: 100, status: statusFilter || undefined })
       .then((p) => setCourses(p.content))
       .catch((e) => setErr(e instanceof Error ? e.message : "Failed to load"));
-  }, [router, statusFilter]);
+  }, [router, statusFilter, gate]);
+
+  if (gate !== "allowed") {
+    return <p className="text-sm text-[var(--muted)]">Loading…</p>;
+  }
 
   function onSearch(e: React.FormEvent) {
     e.preventDefault();
