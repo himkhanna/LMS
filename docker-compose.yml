@@ -104,6 +104,12 @@ services:
       AI_DB_USER: ai
       AI_DB_PASSWORD: ai
       CORS_ALLOWED_ORIGINS: http://localhost:3000
+    # Lets the container resolve host.docker.internal to the laptop's
+    # loopback so a locally-running Ollama at http://host.docker.internal:11434
+    # is reachable. Docker Desktop sets this up automatically; on Linux
+    # native Docker the explicit mapping is required.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports: ["8082:8082"]
 
   # ---- Frontend ----
